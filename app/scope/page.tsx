@@ -54,6 +54,7 @@ export default function ScopePage() {
   const [coldStarted, setColdStarted] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
   const [thinking, setThinking] = useState(false);
+  const [adjusting, setAdjusting] = useState<"pattern" | "spec" | null>(null);
   const fundingRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
   const complete = answers.length === coldQuestions.length;
@@ -108,6 +109,9 @@ export default function ScopePage() {
             {mode === "seeded" ? "Two questions · about three minutes" : "Five questions · about five minutes"}
           </p>
           {mode === "seeded" && (
+            <p className="mt-1 text-sm text-black/55">You&apos;ve already done this work — it&apos;s in your CRM.</p>
+          )}
+          {mode === "seeded" && (
             <p className="mt-2 text-xs text-black/45">{crmBadge(brand.partnerName)}</p>
           )}
         </div>
@@ -152,22 +156,9 @@ export default function ScopePage() {
               <p className="mt-3 text-sm leading-6 text-black/68">
                 Matched on document volume and manual review. Typically $2M–$9M annually.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <ChoiceChip
-                  selected={graph.session.patternId === "document-intake"}
-                  disabled={!canEditSession}
-                  onClick={() => applyPattern("document-intake")}
-                >
-                  Document-heavy intake
-                </ChoiceChip>
-                <ChoiceChip
-                  selected={graph.session.patternId === "fraud-triage"}
-                  disabled={!canEditSession}
-                  onClick={() => applyPattern("fraud-triage")}
-                >
-                  Or closer to fraud triage?
-                </ChoiceChip>
-              </div>
+              <p className="mt-3 text-sm font-semibold">
+                {graph.session.patternId === "fraud-triage" ? "Fraud triage" : "Document-heavy intake"}
+              </p>
             </section>
 
             <section className="rounded-sm border border-black/10 bg-white p-5">
@@ -181,22 +172,9 @@ export default function ScopePage() {
               <p className="mt-1 text-sm leading-6 text-black/62">
                 Both prior pilots were document patterns — reuse that pilot spec?
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <ChoiceChip
-                  selected={graph.session.reusePriorPilotSpec === true}
-                  disabled={!canEditSession}
-                  onClick={() => applyReusePilot(true)}
-                >
-                  Reuse the prior spec
-                </ChoiceChip>
-                <ChoiceChip
-                  selected={graph.session.reusePriorPilotSpec === false}
-                  disabled={!canEditSession}
-                  onClick={() => applyReusePilot(false)}
-                >
-                  Start a fresh spec
-                </ChoiceChip>
-              </div>
+              <p className="mt-3 text-sm font-semibold">
+                {graph.session.reusePriorPilotSpec === false ? "Starting a fresh pilot spec" : "Reusing the prior pilot spec"}
+              </p>
             </section>
 
             <p className="px-1 text-sm leading-6 text-black/55">
@@ -238,6 +216,39 @@ export default function ScopePage() {
                     ))}
                   </ul>
                 </div>
+                <div className="border-t border-black/10 pt-4">
+                  <p className="text-xs font-medium text-black/45">Record-derived defaults</p>
+                  <div className="mt-3 space-y-4 text-sm">
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p>Pattern: <span className="font-medium">{graph.session.patternId === "fraud-triage" ? "Fraud triage" : "Document-heavy intake"}</span></p>
+                        {canEditSession && (
+                          <button type="button" className="text-xs font-medium underline underline-offset-4" onClick={() => setAdjusting(adjusting === "pattern" ? null : "pattern")}>adjust</button>
+                        )}
+                      </div>
+                      {adjusting === "pattern" && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <ChoiceChip selected={graph.session.patternId === "document-intake"} disabled={!canEditSession} onClick={() => applyPattern("document-intake")}>Document-heavy intake</ChoiceChip>
+                          <ChoiceChip selected={graph.session.patternId === "fraud-triage"} disabled={!canEditSession} onClick={() => applyPattern("fraud-triage")}>Fraud triage</ChoiceChip>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p>Pilot spec: <span className="font-medium">{graph.session.reusePriorPilotSpec === false ? "Start fresh" : "Reuse prior spec"}</span></p>
+                        {canEditSession && (
+                          <button type="button" className="text-xs font-medium underline underline-offset-4" onClick={() => setAdjusting(adjusting === "spec" ? null : "spec")}>adjust</button>
+                        )}
+                      </div>
+                      {adjusting === "spec" && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <ChoiceChip selected={graph.session.reusePriorPilotSpec !== false} disabled={!canEditSession} onClick={() => applyReusePilot(true)}>Reuse prior spec</ChoiceChip>
+                          <ChoiceChip selected={graph.session.reusePriorPilotSpec === false} disabled={!canEditSession} onClick={() => applyReusePilot(false)}>Start fresh</ChoiceChip>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </details>
           </div>
@@ -247,7 +258,7 @@ export default function ScopePage() {
               <span className="grid size-7 place-items-center rounded-sm bg-black text-xs font-semibold text-white">AI</span>
               <div>
                 <p className="text-sm font-semibold">Two things to confirm</p>
-                <p className="text-xs text-black/45">The record supplies the rest</p>
+                <p className="text-xs text-black/45">The record supplies the rest · Seeded responses, no live model</p>
               </div>
             </div>
 
@@ -282,7 +293,7 @@ export default function ScopePage() {
                     <TriangleAlert className="size-4" /> Economic-buyer observation
                   </p>
                   <p className="mt-2 text-sm leading-6 text-black/68">
-                    Karen Whitfield, the economic buyer, has no logged activity. The close date has slipped twice. Those facts are likely related.
+                    Karen Whitfield, the economic buyer, has no logged activity. The close date has slipped twice. Those facts are likely related. I&apos;d get her in the room.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <ChoiceChip
@@ -300,6 +311,11 @@ export default function ScopePage() {
                       Brief Dana to carry it
                     </ChoiceChip>
                   </div>
+                  {fundingRoute && (
+                    <p className="mt-3 text-xs font-medium text-black/58">
+                      {fundingRoute === "invite-karen" ? "Karen is in the room" : "Dana carries the ask"} · step 5 updated
+                    </p>
+                  )}
                 </div>
               )}
 

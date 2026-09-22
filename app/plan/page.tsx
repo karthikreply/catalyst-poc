@@ -146,7 +146,8 @@ ${people.signoff}`;
         </section>
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
-          <h2 className="text-lg font-semibold">Pre-work</h2>
+          <h2 className="text-lg font-semibold">Pre-work for Dana</h2>
+          <p className="mt-2 text-sm text-black/55">Dana coordinates these customer-side inputs before the session.</p>
           <ul className="mt-4 space-y-3">{sessionPrework.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 size-4 shrink-0" style={{ color: brand.accent }} />{item}</li>)}</ul>
         </section>
 

@@ -52,7 +52,11 @@ function hydrateGraph(value: SessionGraph | null): SessionGraph {
   return {
     ...initialSessionGraph,
     ...value,
-    session: { ...initialSessionGraph.session, ...value.session },
+    session: {
+      ...initialSessionGraph.session,
+      ...value.session,
+      reusePriorPilotSpec: value.session.reusePriorPilotSpec ?? true,
+    },
     valueInputs: value.valueInputs?.length ? value.valueInputs : initialSessionGraph.valueInputs,
     costComponents: value.costComponents?.length ? value.costComponents : initialSessionGraph.costComponents,
     agenda: value.agenda?.length ? value.agenda : initialSessionGraph.agenda,

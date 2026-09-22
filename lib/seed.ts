@@ -152,7 +152,7 @@ export const initialSessionGraph: SessionGraph = {
     qualified: false,
     ledgerFrozen: false,
     fundingRoute: null,
-    reusePriorPilotSpec: null,
+    reusePriorPilotSpec: true,
     claimsVolumeChoice: null,
   },
   agenda: [

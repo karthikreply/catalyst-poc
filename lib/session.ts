@@ -78,9 +78,9 @@ export function preworkForMechanic(mechanic: Mechanic) {
 export function pdmPartnerInvitationCopy(brand: Brand) {
   return `Hi Ravi,
 
-Heartland Mutual Insurance looks ready for a focused value session. Please bring the customer team together to confirm the claims-intake economics, compliance boundary, and owner for a six-week pilot.
+Heartland Mutual Insurance looks ready for a focused value session on an account you own. Run it with the customer team to turn the claims-intake opportunity into a scoped six-week pilot.
 
-The session can run as a facilitated value sprint or a customer self-service walkthrough. ${brand.partnerName} owns the customer relationship and resulting next step.
+There is partner development funding available if the evidence supports the pilot, and the resulting business case carries ${brand.partnerName}'s brand. You keep the customer relationship and the next step.
 
 Regards,
 Priya Raghavan · Platform vendor`;
@@ -126,7 +126,7 @@ export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolum
     session: { ...graph.session, claimsVolumeChoice: choice },
     valueInputs,
     costComponents,
-    outcome: { ...graph.outcome, partiallyEstimated: choice === "unconfirmed" },
+    outcome: { ...graph.outcome, partiallyEstimated: choice !== "about-400" },
   });
 }
 
@@ -136,17 +136,43 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   const handling = graph.valueInputs.find((input) => input.id === "handling");
   if (!claims || !delay || !handling) return "";
   if (!claims.confirmedBy) {
-    return "Unconfirmed estimate. The artifact will carry that label until volume is confirmed.";
+    return "Artifact will label this an unconfirmed estimate.";
   }
   if (graph.session.claimsVolumeChoice === "range-250-500") {
-    return "250–500/day × 2 avoidable days × $38.75 → about $19,000–$39,000/day, $4.8M–$9.7M a year.\nInside the library's $2M–$9M range for this pattern.";
+    return "250–500 × 2 × $38.75 → $19,000–$39,000/day · $4.8M–$9.7M/year · spans the library range";
   }
   const daily = formatCurrency(calculateDailyValue(claims.quantity, delay.quantity, handling.quantity));
   const millions = (calculateAnnualValue(claims.quantity, delay.quantity, handling.quantity) / 1_000_000).toFixed(2).replace(/\.00$/, "");
-  return [
-    `${claims.quantity}/day × ${delay.quantity} avoidable days × ${formatPreciseCurrency(handling.quantity)} → ${daily}/day, ~$${millions}M a year`,
-    "Top of the library's $2M–$9M range for this pattern.",
-  ].join("\n");
+  return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity)} → ${daily}/day · $${millions}M/year · top of the library range`;
+}
+
+export function claimsArtifactCopy(graph: SessionGraph) {
+  const claims = graph.valueInputs.find((input) => input.id === "claims");
+  const delay = graph.valueInputs.find((input) => input.id === "delay");
+  const handling = graph.valueInputs.find((input) => input.id === "handling");
+  if (!claims || !delay || !handling) {
+    return { headline: "", detail: "", status: null };
+  }
+  if (graph.session.claimsVolumeChoice === "unconfirmed") {
+    return {
+      headline: "Value pending volume confirmation",
+      detail: "Claims volume was not confirmed in Scope. Confirm it before using a point estimate in the funding case.",
+      status: "Unconfirmed estimate",
+    };
+  }
+  if (graph.session.claimsVolumeChoice === "range-250-500") {
+    return {
+      headline: "$19,000–$39,000 / day",
+      detail: "250–500 claims per day × 2 avoidable days × $38.75 handling cost. At 250 working days, that is $4.8M–$9.7M per year.",
+      status: "Range estimate · spans the library range",
+    };
+  }
+  const daily = formatCurrency(calculateDailyValue(claims.quantity, delay.quantity, handling.quantity));
+  return {
+    headline: `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity)} = ${daily} / day`,
+    detail: `${claims.quantity} claims per day × ${delay.quantity} avoidable days × ${formatPreciseCurrency(handling.quantity)} handling cost. At 250 working days, that is ${formatCurrency(graph.outcome.annualValue)} per year.`,
+    status: null,
+  };
 }
 
 export function applyFundingRoute(graph: SessionGraph, route: FundingRoute): SessionGraph {

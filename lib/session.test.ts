@@ -8,6 +8,7 @@ import {
   applyDeliveryMode,
   applyFundingRoute,
   applyMechanic,
+  claimsArtifactCopy,
   claimsPayoffCopy,
   fundingAskCopy,
   isQualified,
@@ -17,7 +18,7 @@ import {
   shouldResetGraph,
   viewerForActor,
 } from "./session";
-import { calculateAnnualValue, calculateDailyValue } from "./value";
+import { calculateAnnualValue } from "./value";
 
 describe("applyDeliveryMode", () => {
   it("keeps edited values and captures when switching delivery", () => {
@@ -87,6 +88,17 @@ describe("plan consequences", () => {
     ]));
   });
 
+  it("removes ghost-ledger agenda and pre-work when value sprint is restored", () => {
+    const ghost = applyMechanic(initialSessionGraph, "ghost-ledger");
+    const restored = applyMechanic(ghost, "value-sprint");
+
+    expect(agendaForSession(restored).find((item) => item.id === "volume-and-cost")?.title)
+      .toBe("Volume and cost");
+    expect(preworkForMechanic(restored.session.mechanic)).not.toEqual(expect.arrayContaining([
+      expect.stringMatching(/tool spend|overtime|rework rate|review hours/i),
+    ]));
+  });
+
   it("carries the funding route into agenda step 5", () => {
     const invited = applyFundingRoute(initialSessionGraph, "invite-karen");
     const delegated = applyFundingRoute(initialSessionGraph, "brief-dana");
@@ -102,6 +114,9 @@ describe("plan consequences", () => {
 
     expect(invitation).toMatch(/^Hi Ravi,/);
     expect(invitation).toContain("Heartland Mutual Insurance");
+    expect(invitation).toMatch(/account you own/i);
+    expect(invitation).toMatch(/funding available/i);
+    expect(invitation).toMatch(/CDW('s)? brand/i);
     expect(invitation).toContain("Priya Raghavan · Platform vendor");
   });
 });
@@ -154,15 +169,9 @@ describe("scope decisions", () => {
     expect(claims?.confirmedBy).toBe("Michelle Dorsey");
     expect(next.outcome.partiallyEstimated).toBeFalsy();
     expect(next.outcome.annualValue).toBe(calculateAnnualValue(400, 2, 38.75));
-    expect(claimsPayoffCopy(next)).toContain(
-      `${400}/day × 2 avoidable days × $38.75 → ${new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0,
-      }).format(calculateDailyValue(400, 2, 38.75))}/day`,
+    expect(claimsPayoffCopy(next)).toBe(
+      "400 × 2 × $38.75 → $31,000/day · $7.75M/year · top of the library range",
     );
-    expect(claimsPayoffCopy(next)).toContain("$7.75M a year");
-    expect(claimsPayoffCopy(next)).toContain("Top of the library");
   });
 
   it("marks an unconfirmed volume as an estimate on the artifact", () => {
@@ -170,6 +179,23 @@ describe("scope decisions", () => {
     expect(next.valueInputs.find((input) => input.id === "claims")?.confirmedBy).toBeNull();
     expect(next.outcome.partiallyEstimated).toBe(true);
     expect(claimsPayoffCopy(next)).toMatch(/unconfirmed estimate/i);
+    expect(claimsArtifactCopy(next).headline).toBe("Value pending volume confirmation");
+    expect(claimsArtifactCopy(next).status).toBe("Unconfirmed estimate");
+    expect(claimsArtifactCopy(next).headline).not.toContain("$7.75M");
+  });
+
+  it("carries a claims range into the artifact instead of collapsing it to a midpoint", () => {
+    const next = applyClaimsVolumeChoice(initialSessionGraph, "range-250-500");
+    const copy = claimsArtifactCopy(next);
+
+    expect(next.outcome.partiallyEstimated).toBe(true);
+    expect(claimsPayoffCopy(next)).toContain("$19,000–$39,000/day");
+    expect(claimsPayoffCopy(next)).toContain("$4.8M–$9.7M/year");
+    expect(claimsPayoffCopy(next)).toContain("spans the library range");
+    expect(copy.headline).toBe("$19,000–$39,000 / day");
+    expect(copy.detail).toContain("$4.8M–$9.7M per year");
+    expect(copy.status).toBe("Range estimate · spans the library range");
+    expect(copy.headline).not.toContain("$7.75M");
   });
 
   it("inviting Karen keeps the artifact ask on her and lists her as invited", () => {

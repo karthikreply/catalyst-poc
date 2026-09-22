@@ -12,8 +12,8 @@ import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
 import { componentMonthlyTotal, ledgerMonthlyTotal } from "@/lib/cost-model";
 import type { CostComponent } from "@/lib/seed";
-import { calculateDailyValue, formatCurrency, formatPreciseCurrency } from "@/lib/value";
-import { fundingAskCopy } from "@/lib/session";
+import { formatCurrency, formatPreciseCurrency } from "@/lib/value";
+import { claimsArtifactCopy, fundingAskCopy } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 function componentArithmetic(component: CostComponent) {
@@ -48,9 +48,8 @@ export default function ArtifactPage() {
   const [dafOpen, setDafOpen] = useState(false);
   const dafRef = useRef<HTMLElement>(null);
   const claims = graph.valueInputs.find((input) => input.id === "claims")!;
-  const delay = graph.valueInputs.find((input) => input.id === "delay")!;
   const handling = graph.valueInputs.find((input) => input.id === "handling")!;
-  const daily = calculateDailyValue(claims.quantity, delay.quantity, handling.quantity);
+  const claimsCopy = claimsArtifactCopy(graph);
   const problemQuotes = graph.captures.filter((capture) => ["Michelle Dorsey", "Dana Reyes", "Alex Chen"].includes(capture.attributedTo)).slice(0, 3);
   const compliance = graph.captures.find((capture) => capture.attributedTo === "Robert Osei");
   const selfService = graph.session.delivery === "self-service";
@@ -150,7 +149,16 @@ export default function ArtifactPage() {
             <div><dt className="text-xs text-black/45">Session</dt><dd>{graph.session.id}</dd></div>
             <div><dt className="text-xs text-black/45">Customer</dt><dd>{graph.session.customerName}</dd></div>
             <div><dt className="text-xs text-black/45">Use case</dt><dd>{graph.outcome.useCase}</dd></div>
-            <div><dt className="text-xs text-black/45">Value</dt><dd>{formatCurrency(graph.outcome.annualValue)} / year</dd></div>
+            <div>
+              <dt className="text-xs text-black/45">Value</dt>
+              <dd>
+                {graph.session.claimsVolumeChoice === "range-250-500"
+                  ? "$4.8M–$9.7M / year"
+                  : graph.session.claimsVolumeChoice === "unconfirmed"
+                    ? "Pending volume confirmation"
+                    : `${formatCurrency(graph.outcome.annualValue)} / year`}
+              </dd>
+            </div>
           </dl>
           <p className="mt-4 text-sm font-medium">Evidence</p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black/65">
@@ -203,8 +211,16 @@ export default function ArtifactPage() {
             <h3 className="text-lg font-semibold">What it costs</h3>
             {ghost ? (
               <>
-                <p className="mt-3 text-2xl font-semibold tabular-nums">{formatCurrency(graph.outcome.annualValue)} / year</p>
-                {partial && <p className="mt-1 text-sm font-medium text-amber-800">Partially estimated</p>}
+                <p className="mt-3 text-2xl font-semibold tabular-nums">
+                  {graph.session.claimsVolumeChoice === "range-250-500"
+                    ? "$4.8M–$9.7M / year"
+                    : graph.session.claimsVolumeChoice === "unconfirmed"
+                      ? claimsCopy.headline
+                      : `${formatCurrency(graph.outcome.annualValue)} / year`}
+                </p>
+                {(claimsCopy.status || partial) && (
+                  <p className="mt-1 text-sm font-medium text-amber-800">{claimsCopy.status ?? "Partially estimated"}</p>
+                )}
                 <ul className="mt-4 space-y-3">
                   {graph.costComponents.map((component) => (
                     <li key={component.id} className="text-sm leading-6">
@@ -220,21 +236,27 @@ export default function ArtifactPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-sm text-black/58">
-                  Monthly total {formatCurrency(ledgerMonthlyTotal(graph.costComponents))}. At twelve months, {formatCurrency(graph.outcome.annualValue)} per year.
-                </p>
+                {graph.session.claimsVolumeChoice === "range-250-500" ? (
+                  <p className="mt-3 text-sm text-black/58">Ledger rows use the 375-claim midpoint for planning; the funding case carries $4.8M–$9.7M per year.</p>
+                ) : graph.session.claimsVolumeChoice === "unconfirmed" ? (
+                  <p className="mt-3 text-sm text-black/58">Ledger rows are provisional until claims volume is confirmed.</p>
+                ) : (
+                  <p className="mt-3 text-sm text-black/58">
+                    Monthly total {formatCurrency(ledgerMonthlyTotal(graph.costComponents))}. At twelve months, {formatCurrency(graph.outcome.annualValue)} per year.
+                  </p>
+                )}
               </>
             ) : (
               <>
-                <p className="mt-3 text-2xl font-semibold tabular-nums">{claims.quantity} × {delay.quantity} × {formatPreciseCurrency(handling.quantity)} = {formatCurrency(daily)} / day</p>
-                <p className="mt-2 text-sm leading-6 text-black/58">
-                  {claims.quantity} claims per day × {delay.quantity} avoidable days × {formatPreciseCurrency(handling.quantity)} handling cost. At 250 working days, that is <strong className="text-black">{formatCurrency(graph.outcome.annualValue)} per year</strong>.
-                </p>
-                {(partial || !claims.confirmedBy) && (
-                  <p className="mt-1 text-sm font-medium text-amber-800">Unconfirmed estimate</p>
-                )}
+                <p className="mt-3 text-2xl font-semibold tabular-nums">{claimsCopy.headline}</p>
+                <p className="mt-2 text-sm leading-6 text-black/58">{claimsCopy.detail}</p>
+                {claimsCopy.status && <p className="mt-1 text-sm font-medium text-amber-800">{claimsCopy.status}</p>}
                 <p className="mt-2 text-xs text-black/42">
-                  {selfService
+                  {graph.session.claimsVolumeChoice === "range-250-500"
+                    ? "Volume supplied as a range · midpoint used only for planning inputs."
+                    : graph.session.claimsVolumeChoice === "unconfirmed"
+                      ? "No respondent confirmation yet."
+                      : selfService
                     ? "Respondent-confirmed · not facilitator-verified"
                     : claims.confirmedBy
                       ? `Inputs confirmed by ${claims.confirmedBy} and ${handling.confirmedBy}.`
