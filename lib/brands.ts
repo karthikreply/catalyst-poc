@@ -24,7 +24,7 @@ export const brands: Record<BrandId, Brand> = {
   cdw: {
     id: "cdw",
     partnerName: "CDW",
-    productName: "Session Studio",
+    productName: "Value session",
     mark: "CDW",
     accent: "#cc1827",
     accentDark: "#a70f1c",
@@ -35,7 +35,7 @@ export const brands: Record<BrandId, Brand> = {
   softwareone: {
     id: "softwareone",
     partnerName: "SoftwareOne",
-    productName: "Value Lab",
+    productName: "Value session",
     mark: "softwareone",
     accent: "#c84318",
     accentDark: "#c84318",

@@ -13,6 +13,7 @@ import { withBrandPeople } from "@/lib/brands";
 import { componentMonthlyTotal, ledgerMonthlyTotal } from "@/lib/cost-model";
 import type { CostComponent } from "@/lib/seed";
 import { calculateDailyValue, formatCurrency, formatPreciseCurrency } from "@/lib/value";
+import { fundingAskCopy } from "@/lib/session";
 
 function componentArithmetic(component: CostComponent) {
   switch (component.id) {
@@ -91,7 +92,13 @@ export default function ArtifactPage() {
       <div className="mx-auto mb-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Business case</h1>
-          <p className="text-sm text-black/50">Ready for Dana to take to Karen.</p>
+          <p className="text-sm text-black/50">
+            {graph.session.fundingRoute === "brief-dana"
+              ? "Ready for Dana to carry the ask."
+              : graph.session.fundingRoute === "invite-karen"
+                ? "Ready for Karen."
+                : "Ready for Dana to take to Karen."}
+          </p>
         </div>
         <Button onClick={downloadPdf} className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]"><Download /> Download PDF</Button>
       </div>
@@ -149,10 +156,15 @@ export default function ArtifactPage() {
                 <p className="mt-2 text-sm leading-6 text-black/58">
                   {claims.quantity} claims per day × {delay.quantity} avoidable days × {formatPreciseCurrency(handling.quantity)} handling cost. At 250 working days, that is <strong className="text-black">{formatCurrency(graph.outcome.annualValue)} per year</strong>.
                 </p>
+                {(partial || !claims.confirmedBy) && (
+                  <p className="mt-1 text-sm font-medium text-amber-800">Unconfirmed estimate</p>
+                )}
                 <p className="mt-2 text-xs text-black/42">
                   {selfService
                     ? "Respondent-confirmed · not facilitator-verified"
-                    : `Inputs confirmed by ${claims.confirmedBy} and ${handling.confirmedBy}.`}
+                    : claims.confirmedBy
+                      ? `Inputs confirmed by ${claims.confirmedBy} and ${handling.confirmedBy}.`
+                      : "Volume is an unconfirmed estimate from scope."}
                 </p>
               </>
             )}
@@ -180,7 +192,7 @@ export default function ArtifactPage() {
 
           <section className="border-t border-black/10 pt-8">
             <h3 className="text-lg font-semibold">The ask</h3>
-            <p className="mt-3 max-w-2xl text-[15px] leading-7">Karen Whitfield, CFO: fund the six-week pilot and allow Alex Chen’s team to prepare 500 anonymised claims.</p>
+            <p className="mt-3 max-w-2xl text-[15px] leading-7">{fundingAskCopy(graph)}</p>
             <p className="mt-8 text-sm font-semibold">{people.signoff}</p>
           </section>
         </div>

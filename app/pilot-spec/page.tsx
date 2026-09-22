@@ -54,6 +54,14 @@ export default function PilotSpecPage() {
               ["Owner", graph.outcome.owner ?? "Alex Chen"],
               ["Constraint", `${compliance?.text ?? graph.outcome.constraint} (Robert Osei, 12 Feb)`],
               ["Next step", graph.outcome.nextStep],
+              ...(graph.session.reusePriorPilotSpec == null
+                ? []
+                : [[
+                    "Spec source",
+                    graph.session.reusePriorPilotSpec
+                      ? "Reused from prior funded document-pattern pilots"
+                      : "New spec from this session",
+                  ]]),
             ].map(([term, detail]) => (
               <div key={term} className="bg-white p-4"><dt className="text-xs font-medium text-black/45">{term}</dt><dd className="mt-1 text-sm leading-6">{detail}</dd></div>
             ))}

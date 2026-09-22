@@ -5,7 +5,20 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { brands, type Brand, type BrandId } from "@/lib/brands";
 import { freezeLedger } from "@/lib/cost-model";
 import { initialSessionGraph, type Actor, type Capture, type Delivery, type Mechanic, type SessionGraph } from "@/lib/seed";
-import { applyDeliveryMode, applyMechanic, bindAnnualValue, isSessionReadOnly, viewerForActor, type Viewer } from "@/lib/session";
+import {
+  applyClaimsVolumeChoice,
+  applyDeliveryMode,
+  applyFundingRoute,
+  applyMechanic,
+  applyPatternChoice,
+  applyReusePriorPilotSpec,
+  bindAnnualValue,
+  isSessionReadOnly,
+  viewerForActor,
+  type ClaimsVolumeChoice,
+  type FundingRoute,
+  type Viewer,
+} from "@/lib/session";
 
 type SessionContextValue = {
   graph: SessionGraph;
@@ -21,6 +34,11 @@ type SessionContextValue = {
   freezeLedgerNow: () => void;
   addCapture: (capture: Omit<Capture, "id" | "sessionId" | "capturedAt">) => void;
   setActiveStep: (stepId: string) => void;
+  applyClaimsChoice: (choice: ClaimsVolumeChoice) => void;
+  applyFunding: (route: FundingRoute) => void;
+  applyPattern: (patternId: string) => void;
+  applyReusePilot: (reuse: boolean) => void;
+  setCustomerProfile: (profile: { name?: string; context?: string }) => void;
   canEditSession: boolean;
 };
 
@@ -39,6 +57,7 @@ function hydrateGraph(value: SessionGraph | null): SessionGraph {
     costComponents: value.costComponents?.length ? value.costComponents : initialSessionGraph.costComponents,
     agenda: value.agenda?.length ? value.agenda : initialSessionGraph.agenda,
     captures: value.captures?.length ? value.captures : initialSessionGraph.captures,
+    attendees: value.attendees?.length ? value.attendees : initialSessionGraph.attendees,
     outcome: { ...initialSessionGraph.outcome, ...value.outcome },
   };
 }
@@ -158,6 +177,38 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }));
   }
 
+  function applyClaimsChoice(choice: ClaimsVolumeChoice) {
+    if (!canEditSession) return;
+    setGraph((current) => applyClaimsVolumeChoice(current, choice));
+  }
+
+  function applyFunding(route: FundingRoute) {
+    if (!canEditSession) return;
+    setGraph((current) => applyFundingRoute(current, route));
+  }
+
+  function applyPattern(patternId: string) {
+    if (!canEditSession) return;
+    setGraph((current) => applyPatternChoice(current, patternId));
+  }
+
+  function applyReusePilot(reuse: boolean) {
+    if (!canEditSession) return;
+    setGraph((current) => applyReusePriorPilotSpec(current, reuse));
+  }
+
+  function setCustomerProfile({ name, context }: { name?: string; context?: string }) {
+    if (!canEditSession) return;
+    setGraph((current) => ({
+      ...current,
+      session: {
+        ...current.session,
+        customerName: name ?? current.session.customerName,
+        customerContext: context ?? current.session.customerContext,
+      },
+    }));
+  }
+
   const value = useMemo(
     () => ({
       graph,
@@ -173,6 +224,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       freezeLedgerNow,
       addCapture,
       setActiveStep,
+      applyClaimsChoice,
+      applyFunding,
+      applyPattern,
+      applyReusePilot,
+      setCustomerProfile,
       canEditSession,
     }),
     [graph, brandId, brand, viewer, canEditSession],

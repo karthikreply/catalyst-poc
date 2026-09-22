@@ -18,6 +18,9 @@ export type Session = {
   status: "scoped" | "planned" | "running" | "complete";
   qualified: boolean;
   ledgerFrozen: boolean;
+  fundingRoute: "invite-karen" | "brief-dana" | null;
+  reusePriorPilotSpec: boolean | null;
+  claimsVolumeChoice: "about-400" | "range-250-500" | "unconfirmed" | null;
 };
 
 export type AgendaStep = {
@@ -83,6 +86,7 @@ export type SessionGraph = {
   valueInputs: ValueInput[];
   costComponents: CostComponent[];
   outcome: Outcome;
+  attendees: Attendee[];
 };
 
 export const patterns = [
@@ -147,6 +151,9 @@ export const initialSessionGraph: SessionGraph = {
     status: "running",
     qualified: false,
     ledgerFrozen: false,
+    fundingRoute: null,
+    reusePriorPilotSpec: null,
+    claimsVolumeChoice: null,
   },
   agenda: [
     ["where-it-hurts", "Where it hurts", "Walk me through what happens when a claim arrives.", 30, "done"],
@@ -228,16 +235,17 @@ export const initialSessionGraph: SessionGraph = {
     nextStep: "6-week pilot on 500 anonymised claims",
     constraint: "Human review on low-confidence extractions",
   },
+  attendees: [
+    { id: "dana", name: "Dana Reyes", role: "VP Claims Operations", reason: "Owns the operating outcome and can sponsor the pilot.", source: "crm", attendance: "attending" },
+    { id: "michelle", name: "Michelle Dorsey", role: "Claims Supervisor", reason: "Brings the frontline workflow and handling-cost evidence.", source: "crm", attendance: "attending" },
+    { id: "alex", name: "Alex Chen", role: "Senior Developer", reason: "Can confirm integration constraints and own the pilot.", source: "crm", attendance: "attending" },
+    { id: "robert", name: "Robert Osei", role: "Compliance Officer", reason: "Warning: sessions that invite compliance late lose two weeks.", source: "crm", attendance: "attending" },
+    { id: "sandeep", name: "Sandeep Nair", role: "Director of Infrastructure", reason: "Confirms data access, security, and deployment boundaries.", source: "crm", attendance: "attending" },
+    { id: "karen", name: "Karen Whitfield", role: "CFO", reason: "Economic buyer · invited, not attending", source: "crm", attendance: "invited-not-attending" },
+  ],
 };
 
-export const attendees: Attendee[] = [
-  { id: "dana", name: "Dana Reyes", role: "VP Claims Operations", reason: "Owns the operating outcome and can sponsor the pilot.", source: "crm", attendance: "attending" },
-  { id: "michelle", name: "Michelle Dorsey", role: "Claims Supervisor", reason: "Brings the frontline workflow and handling-cost evidence.", source: "crm", attendance: "attending" },
-  { id: "alex", name: "Alex Chen", role: "Senior Developer", reason: "Can confirm integration constraints and own the pilot.", source: "crm", attendance: "attending" },
-  { id: "robert", name: "Robert Osei", role: "Compliance Officer", reason: "Warning: sessions that invite compliance late lose two weeks.", source: "crm", attendance: "attending" },
-  { id: "sandeep", name: "Sandeep Nair", role: "Director of Infrastructure", reason: "Confirms data access, security, and deployment boundaries.", source: "crm", attendance: "attending" },
-  { id: "karen", name: "Karen Whitfield", role: "CFO", reason: "Economic buyer · invited, not attending", source: "crm", attendance: "invited-not-attending" },
-];
+export const attendees: Attendee[] = initialSessionGraph.attendees;
 
 export const prework = [
   "Bring 10 representative PDF claim forms, including handwritten notes.",

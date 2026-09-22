@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { UnavailableControl } from "@/components/unavailable-control";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
-import { attendees, patterns, prework, type Delivery, type Mechanic } from "@/lib/seed";
+import { patterns, prework, type Delivery, type Mechanic } from "@/lib/seed";
 import { cn } from "@/lib/utils";
 
 export default function PlanPage() {
@@ -126,10 +126,10 @@ ${people.signoff}`;
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Who needs to be in the room</h2>
           <div className="mt-5 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 md:grid-cols-2">
-            {attendees.map((person) => (
+            {graph.attendees.map((person) => (
               <div key={person.id} className={cn("bg-white p-4", person.attendance === "invited-not-attending" && "bg-[#fafaf8]")}>
                 <p className="font-semibold">{person.name}</p>
-                <p className="text-xs text-black/45">{person.role} · From CRM · {brand.partnerName}</p>
+                <p className="text-xs text-black/45">{person.role}</p>
                 <p className="mt-2 flex items-start gap-2 text-sm leading-6 text-black/62">
                   {person.name === "Robert Osei" && <TriangleAlert className="mt-1 size-4 shrink-0 text-amber-600" />}
                   {person.reason}
