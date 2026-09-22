@@ -134,14 +134,35 @@ export function recentTelemetryRows(rows: TelemetrySession[], limit = 8) {
     const match = candidates.find((row) => predicate(row) && !selected.some((item) => item.id === row.id));
     if (match) selected.push(match);
   };
+  const facilitatedTarget = Math.floor(limit / 2);
+  const selfServiceTarget = limit - facilitatedTarget;
 
-  addFirst((row) => row.mechanic === "ghost-ledger");
-  addFirst((row) => row.delivery === "self-service");
-  addFirst((row) => row.qualified && !row.converted);
-  for (const pattern of patterns) addFirst((row) => row.pattern === pattern);
-  for (const row of candidates) {
-    if (selected.length >= limit) break;
-    if (!selected.some((item) => item.id === row.id)) selected.push(row);
+  addFirst((row) => row.delivery === "facilitated" && row.mechanic === "ghost-ledger");
+  for (const pattern of patterns) {
+    if (selected.filter((row) => row.delivery === "facilitated").length >= facilitatedTarget) break;
+    addFirst((row) => row.delivery === "facilitated" && row.pattern === pattern);
+  }
+  while (selected.filter((row) => row.delivery === "facilitated").length < facilitatedTarget) {
+    const before = selected.length;
+    addFirst((row) => row.delivery === "facilitated");
+    if (selected.length === before) break;
+  }
+
+  addFirst((row) => row.delivery === "self-service" && row.qualified && row.mechanic === "ghost-ledger");
+  for (const pattern of patterns) {
+    if (selected.filter((row) => row.delivery === "self-service" && row.qualified).length >= Math.min(3, selfServiceTarget)) break;
+    addFirst((row) => row.delivery === "self-service" && row.qualified && row.pattern === pattern);
+  }
+  while (selected.filter((row) => row.delivery === "self-service" && row.qualified).length < Math.min(3, selfServiceTarget)) {
+    const before = selected.length;
+    addFirst((row) => row.delivery === "self-service" && row.qualified);
+    if (selected.length === before) break;
+  }
+  addFirst((row) => row.delivery === "self-service" && !row.qualified);
+  while (selected.filter((row) => row.delivery === "self-service").length < selfServiceTarget) {
+    const before = selected.length;
+    addFirst((row) => row.delivery === "self-service");
+    if (selected.length === before) break;
   }
   return selected.slice(0, limit);
 }

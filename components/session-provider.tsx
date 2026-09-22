@@ -1,12 +1,22 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { brands, type Brand, type BrandId } from "@/lib/brands";
 import { freezeLedger } from "@/lib/cost-model";
-import { initialSessionGraph, type Actor, type Capture, type Delivery, type Mechanic, type SessionGraph } from "@/lib/seed";
+import {
+  initialSessionGraph,
+  type Actor,
+  type Capture,
+  type ColdAttendee,
+  type ColdCompany,
+  type Delivery,
+  type Mechanic,
+  type SessionGraph,
+} from "@/lib/seed";
 import {
   applyClaimsVolumeChoice,
+  applyColdScope,
   applyDeliveryMode,
   applyFundingRoute,
   applyMechanic,
@@ -39,6 +49,7 @@ type SessionContextValue = {
   applyPattern: (patternId: string) => void;
   applyReusePilot: (reuse: boolean) => void;
   setCustomerProfile: (profile: { name?: string; context?: string }) => void;
+  setColdScope: (company: ColdCompany, attendees: ColdAttendee[]) => void;
   canEditSession: boolean;
 };
 
@@ -61,7 +72,13 @@ function hydrateGraph(value: SessionGraph | null): SessionGraph {
     costComponents: value.costComponents?.length ? value.costComponents : initialSessionGraph.costComponents,
     agenda: value.agenda?.length ? value.agenda : initialSessionGraph.agenda,
     captures: value.captures?.length ? value.captures : initialSessionGraph.captures,
-    attendees: value.attendees?.length ? value.attendees : initialSessionGraph.attendees,
+    attendees: value.session.scopeMode === "cold"
+      ? value.attendees ?? []
+      : value.attendees?.length
+        ? value.attendees
+        : initialSessionGraph.attendees,
+    coldCompany: value.coldCompany ?? null,
+    coldAttendees: value.coldAttendees ?? [],
     outcome: { ...initialSessionGraph.outcome, ...value.outcome },
   };
 }
@@ -213,30 +230,33 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }));
   }
 
-  const value = useMemo(
-    () => ({
-      graph,
-      brandId,
-      brand,
-      viewer,
-      setBrandId,
-      setActor,
-      setDelivery,
-      setMechanic,
-      updateValue,
-      updateCostInput,
-      freezeLedgerNow,
-      addCapture,
-      setActiveStep,
-      applyClaimsChoice,
-      applyFunding,
-      applyPattern,
-      applyReusePilot,
-      setCustomerProfile,
-      canEditSession,
-    }),
-    [graph, brandId, brand, viewer, canEditSession],
-  );
+  function setColdScope(company: ColdCompany, attendees: ColdAttendee[]) {
+    if (!canEditSession) return;
+    setGraph((current) => applyColdScope(current, company, attendees));
+  }
+
+  const value = {
+    graph,
+    brandId,
+    brand,
+    viewer,
+    setBrandId,
+    setActor,
+    setDelivery,
+    setMechanic,
+    updateValue,
+    updateCostInput,
+    freezeLedgerNow,
+    addCapture,
+    setActiveStep,
+    applyClaimsChoice,
+    applyFunding,
+    applyPattern,
+    applyReusePilot,
+    setCustomerProfile,
+    setColdScope,
+    canEditSession,
+  };
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

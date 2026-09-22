@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { brands } from "./brands";
+import { freezeLedger, ledgerAnnualTotal } from "./cost-model";
 import { initialSessionGraph } from "./seed";
 import {
   agendaForSession,
   applyClaimsVolumeChoice,
+  applyColdScope,
   applyDeliveryMode,
   applyFundingRoute,
   applyMechanic,
@@ -15,6 +17,7 @@ import {
   claimsPayoffCopy,
   fundingAskCopy,
   inputsConfirmedByCopy,
+  missingColdRoles,
   isQualified,
   isSessionReadOnly,
   pdmPartnerInvitationCopy,
@@ -60,8 +63,26 @@ describe("applyDeliveryMode", () => {
   });
 });
 
+describe("ghost-ledger annual value binding", () => {
+  it("keeps delivery changes on the ledger annual rather than the sprint annual", () => {
+    const frozen = freezeLedger(applyMechanic(initialSessionGraph, "ghost-ledger"));
+    const changed = applyDeliveryMode(frozen, "self-service");
+
+    expect(changed.session.ledgerFrozen).toBe(true);
+    expect(changed.outcome.annualValue).toBe(ledgerAnnualTotal(changed.costComponents));
+  });
+
+  it("unfreezes and recomputes the ledger when a source quantity changes", () => {
+    const frozen = freezeLedger(applyMechanic(initialSessionGraph, "ghost-ledger"));
+    const changed = applyClaimsVolumeChoice(frozen, "range-250-500");
+
+    expect(changed.session.ledgerFrozen).toBe(false);
+    expect(changed.outcome.annualValue).toBe(ledgerAnnualTotal(changed.costComponents));
+  });
+});
+
 describe("applyMechanic", () => {
-  it("changes only session.mechanic", () => {
+  it("preserves session evidence while rebinding the active mechanic value", () => {
     const edited = applyDeliveryMode(initialSessionGraph, "self-service");
     const ghost = applyMechanic(edited, "ghost-ledger");
     expect(ghost.session.mechanic).toBe("ghost-ledger");
@@ -70,7 +91,11 @@ describe("applyMechanic", () => {
     expect(ghost.agenda).toEqual(edited.agenda);
     expect(ghost.valueInputs).toEqual(edited.valueInputs);
     expect(ghost.costComponents).toEqual(edited.costComponents);
-    expect(applyMechanic(ghost, "value-sprint").session.mechanic).toBe("value-sprint");
+    expect(ghost.outcome.annualValue).toBe(ledgerAnnualTotal(ghost.costComponents));
+    const restored = applyMechanic(freezeLedger(ghost), "value-sprint");
+    expect(restored.session.mechanic).toBe("value-sprint");
+    expect(restored.session.ledgerFrozen).toBe(false);
+    expect(restored.outcome.annualValue).toBe(calculateAnnualValue(400, 2, 38.75));
   });
 });
 
@@ -122,6 +147,15 @@ describe("plan consequences", () => {
     expect(invitation).toMatch(/funding available/i);
     expect(invitation).toMatch(/CDW('s)? brand/i);
     expect(invitation).toContain("Priya Raghavan · Platform vendor");
+  });
+
+  it("gives Softchoice its own document and invitation voice", () => {
+    expect(brands.softchoice.partnerName).toBe("Softchoice");
+    expect(brands.softchoice.emailIntro).not.toBe(brands.cdw.emailIntro);
+    expect(brands.softchoice.artifactIntro).toMatch(/Softchoice/);
+    expect(brands.softchoice.artifactClosing).toMatch(/Softchoice/);
+    expect(pdmPartnerInvitationCopy(brands.softchoice)).toMatch(/Softchoice('s)? brand/);
+    expect(viewerForActor("partner", brands.softchoice).org).toBe("Softchoice");
   });
 });
 
@@ -224,6 +258,51 @@ describe("scope decisions", () => {
   });
 });
 
+describe("cold scope", () => {
+  const company = {
+    name: "Northwind Insurance",
+    industry: "Insurance",
+    sizeBand: "$500M–$1B",
+  };
+  const attendees = [
+    { name: "Dana Lee", role: "VP Claims Operations" },
+    { name: "Mina Shah", role: "Claims Supervisor" },
+    { name: "Alex Kim", role: "Senior Developer" },
+    { name: "Sam Patel", role: "Infrastructure Director" },
+  ];
+
+  it("persists typed company and people without retaining Heartland attendees", () => {
+    const next = applyColdScope(initialSessionGraph, company, attendees);
+
+    expect(next.session.scopeMode).toBe("cold");
+    expect(next.session.customerName).toBe("Northwind Insurance");
+    expect(next.session.industry).toBe("Insurance");
+    expect(next.coldCompany).toEqual(company);
+    expect(next.coldAttendees).toEqual(attendees);
+    expect(next.attendees.map((person) => person.name)).toEqual(
+      ["Dana Lee", "Mina Shah", "Alex Kim", "Sam Patel"],
+    );
+    expect(next.attendees.some((person) => person.name === "Karen Whitfield")).toBe(false);
+    expect(next.captures).toEqual([]);
+    expect(next.valueInputs.every((input) => input.confirmedBy === null)).toBe(true);
+    expect(next.costComponents.every((component) => component.confirmedBy === null)).toBe(true);
+    expect(next.outcome.owner).toBe("Alex Kim");
+    expect(fundingAskCopy(next)).not.toMatch(/Dana Reyes|Karen Whitfield|Alex Chen/);
+    expect(applyDeliveryMode(next, "facilitated").valueInputs.every((input) => input.confirmedBy === null)).toBe(true);
+  });
+
+  it("uses the pattern to explain attendees and name missing roles", () => {
+    const next = applyColdScope(initialSessionGraph, company, attendees);
+
+    expect(next.attendees.find((person) => person.name === "Dana Lee")?.reason)
+      .toMatch(/operating outcome/i);
+    expect(missingColdRoles(next)).toEqual([
+      expect.objectContaining({ role: "Compliance", reason: expect.stringMatching(/lose two weeks/i) }),
+      expect.objectContaining({ role: "Economic buyer", reason: expect.stringMatching(/fund the pilot/i) }),
+    ]);
+  });
+});
+
 describe("artifact consequences", () => {
   it("does not assert the $7.75M point estimate when volume is a range", () => {
     const next = applyClaimsVolumeChoice(initialSessionGraph, "range-250-500");
@@ -253,10 +332,19 @@ describe("artifact consequences", () => {
   });
 
   it("gives the partner a path back to their PDM", () => {
-    expect(artifactActions("partner", false).tertiary).toBe(
+    expect(artifactActions("partner", false, "facilitated").tertiary).toBe(
       "Contact my partner manager with this business case",
     );
-    expect(artifactActions("pdm", false).tertiary).toBeNull();
+    expect(artifactActions("pdm", false, "facilitated").tertiary).toBeNull();
+  });
+
+  it("leads a self-service artifact with facilitated verification", () => {
+    expect(artifactActions("partner", true, "self-service").primary).toBe(
+      "Request a facilitated session",
+    );
+    expect(artifactActions("partner", true, "self-service").secondary).toBe(
+      "Start DAF funding request",
+    );
   });
 
   it("inviting Karen keeps the artifact ask on her and lists her as invited", () => {

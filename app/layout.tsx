@@ -10,8 +10,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Value session",
-  description: "Partner-led AI value discovery demo",
+  title: "Partner network · Value sessions",
+  description: "Illustrative partner-program and value-session demo",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

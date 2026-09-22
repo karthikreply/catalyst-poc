@@ -9,7 +9,7 @@ import { UnavailableControl } from "@/components/unavailable-control";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
 import { patterns, type Delivery, type Mechanic } from "@/lib/seed";
-import { agendaForSession, pdmPartnerInvitationCopy, preworkForMechanic } from "@/lib/session";
+import { agendaForSession, missingColdRoles, pdmPartnerInvitationCopy, preworkForMechanic } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export default function PlanPage() {
@@ -19,10 +19,13 @@ export default function PlanPage() {
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
   const agenda = agendaForSession(graph);
   const sessionPrework = preworkForMechanic(graph.session.mechanic);
+  const coldGaps = missingColdRoles(graph);
+  const isEmptyColdPlan = graph.session.scopeMode === "cold" && !graph.coldCompany?.name.trim();
+  const customerLead = graph.session.scopeMode === "cold" ? "team" : "Dana";
 
-  const facilitatedEmail = `Hi Dana,
+  const facilitatedEmail = `Hi ${customerLead},
 
-Thanks for bringing the Heartland team together. ${brand.emailIntro}
+Thanks for bringing the ${graph.session.customerName} team together. ${brand.emailIntro.replace("Heartland", graph.session.customerName)}
 
 In three hours, we’ll map the claims-intake bottleneck, agree the cost inputs, set the compliance boundary, and shape a six-week pilot on 500 anonymised claims. Please bring the claims supervisor, a developer, compliance, and infrastructure.
 
@@ -31,18 +34,18 @@ We’ll leave with a business case that shows its arithmetic and credits every d
 Regards,
 ${people.signoff}`;
 
-  const selfServiceEmail = `Hi Dana,
+  const selfServiceEmail = `Hi ${customerLead},
 
-${brand.emailIntro}
+${brand.emailIntro.replace("Heartland", graph.session.customerName)}
 
-I’m sending a guided walkthrough of the Heartland claims-intake case. Please confirm daily volume, handling cost, and a named owner so we can leave with a qualification-grade business case.
+I’m sending a guided walkthrough of the ${graph.session.customerName} case. Please confirm daily volume, handling cost, and a named owner so we can leave with a qualification-grade business case.
 
 If the numbers hold, we can request a facilitated session next.
 
 Regards,
 ${people.signoff}`;
 
-  const pdmEmail = pdmPartnerInvitationCopy(brand);
+  const pdmEmail = pdmPartnerInvitationCopy(brand, graph.session.customerName);
 
   async function copyEmail(kind: "facilitated" | "self-service" | "pdm") {
     const copy = kind === "facilitated" ? facilitatedEmail : kind === "self-service" ? selfServiceEmail : pdmEmail;
@@ -51,17 +54,29 @@ ${people.signoff}`;
     window.setTimeout(() => setCopied(null), 1600);
   }
 
+  if (isEmptyColdPlan) {
+    return (
+      <div className="mx-auto max-w-2xl px-5 py-16 lg:px-8">
+        <section className="rounded-sm border border-black/10 bg-white p-8 text-center">
+          <h1 className="text-2xl font-semibold">Add the company before building the plan</h1>
+          <p className="mt-3 text-sm leading-6 text-black/55">Cold mode has no account record to fall back to. Enter the company and at least three attendees on Scope.</p>
+          <Link href="/scope" className={buttonVariants({ className: "mt-5 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>Back to Scope</Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-black/48">Heartland Mutual Insurance</p>
+          <p className="text-sm text-black/48">{graph.session.customerName}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Session plan</h1>
           <p className="mt-2 text-sm text-black/55">
             Three hours · Tuesday, 9:00 AM · {graph.session.delivery === "self-service" ? "Customer self-service · no partner facilitator present" : `Facilitated by Ravi Menon · ${people.facilitatorOrg}`}
           </p>
         </div>
-        <Link href="/run" className={buttonVariants({ className: "bg-[var(--accent)] hover:bg-[var(--accent-dark)]" })}>Open live session <ArrowRight /></Link>
+        <Link href="/run" className={buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>Open live session <ArrowRight /></Link>
       </div>
 
       {!canEditSession && (
@@ -83,7 +98,7 @@ ${people.signoff}`;
                     key={value}
                     type="button"
                     onClick={() => setDelivery(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.delivery === value ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,white)]" : "border-black/10")}
+                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.delivery === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
                   >
                     <span className="font-semibold">{label}</span>
                     <span className="mt-1 block text-xs text-black/50">{hint}</span>
@@ -102,7 +117,7 @@ ${people.signoff}`;
                     key={value}
                     type="button"
                     onClick={() => setMechanic(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.mechanic === value ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,white)]" : "border-black/10")}
+                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.mechanic === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
                   >
                     <span className="font-semibold">{label}</span>
                     <span className="mt-1 block text-xs text-black/50">{hint}</span>
@@ -143,11 +158,19 @@ ${people.signoff}`;
               </div>
             ))}
           </div>
+          {graph.session.scopeMode === "cold" && coldGaps.length > 0 && (
+            <div className="mt-4 rounded-sm border border-amber-300 bg-amber-50 p-4">
+              <p className="text-sm font-semibold">Roles missing for this pattern</p>
+              <ul className="mt-2 space-y-2 text-sm">
+                {coldGaps.map((gap) => <li key={gap.role}><strong>{gap.role}</strong> — {gap.reason}</li>)}
+              </ul>
+            </div>
+          )}
         </section>
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
-          <h2 className="text-lg font-semibold">Pre-work for Dana</h2>
-          <p className="mt-2 text-sm text-black/55">Dana coordinates these customer-side inputs before the session.</p>
+          <h2 className="text-lg font-semibold">Pre-work for {graph.session.scopeMode === "cold" ? "the customer team" : "Dana"}</h2>
+          <p className="mt-2 text-sm text-black/55">{graph.session.scopeMode === "cold" ? "The named attendees coordinate these inputs before the session." : "Dana coordinates these customer-side inputs before the session."}</p>
           <ul className="mt-4 space-y-3">{sessionPrework.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 size-4 shrink-0" style={{ color: brand.accent }} />{item}</li>)}</ul>
         </section>
 
@@ -177,7 +200,7 @@ ${people.signoff}`;
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">CRM</h2>
-          <p className="mt-2 text-sm text-black/55">Attendees and economic-buyer status came from CRM. Pushing updates back is a partner-owned seam.</p>
+          <p className="mt-2 text-sm text-black/55">{graph.session.scopeMode === "cold" ? "Attendee names were typed in Scope; role reasons and gaps came from the curated pattern." : "Attendees and economic-buyer status came from CRM. Pushing updates back is a partner-owned seam."}</p>
           <div className="mt-4">
             <UnavailableControl label="Push to CRM" owner={brand.partnerName} explanation="Would write attendance and next-step status back to the partner CRM." />
           </div>

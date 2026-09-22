@@ -81,5 +81,8 @@ describe("telemetryBenchmarks", () => {
     expect(recent.some((row) => row.delivery === "self-service")).toBe(true);
     expect(recent.some((row) => row.qualified && !row.converted)).toBe(true);
     expect(new Set(recent.map((row) => row.pattern)).size).toBeGreaterThan(1);
+    expect(recent.filter((row) => row.delivery === "facilitated")).toHaveLength(4);
+    expect(recent.filter((row) => row.delivery === "self-service")).toHaveLength(4);
+    expect(recent.filter((row) => row.delivery === "self-service" && row.qualified).length).toBeGreaterThanOrEqual(3);
   });
 });

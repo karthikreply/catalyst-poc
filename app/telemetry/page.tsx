@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/components/session-provider";
 import {
@@ -20,13 +19,13 @@ import { formatCompactCurrency } from "@/lib/value";
 function Breakdown({ title, rows, details }: { title: string; rows: [string, number][]; details?: Record<string, string> }) {
   const max = Math.max(...rows.map(([, value]) => value), 1);
   return (
-    <section className="rounded-sm border border-black/10 bg-white p-5">
-      <h2 className="font-semibold">{title}</h2>
+    <section className="md-card-outlined p-5">
+      <h2 className="md-title-medium">{title}</h2>
       <div className="mt-5 space-y-4">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <div className="mb-1.5 flex justify-between gap-3 text-sm"><span>{label}{details?.[label] && <span className="ml-2 text-xs text-black/42">{details[label]}</span>}</span><span className="font-semibold tabular-nums">{value}</span></div>
-            <div className="h-1.5 bg-black/[.06]"><div className="h-full bg-[var(--accent)]" style={{ width: `${(value / max) * 100}%` }} /></div>
+            <div className="md-body-medium mb-2 flex justify-between gap-3"><span>{label}{details?.[label] && <span className="md-label-medium ml-2 text-[var(--md-sys-color-on-surface-variant)]">{details[label]}</span>}</span><span className="font-semibold tabular-nums">{value}</span></div>
+            <div className="h-2 rounded-[var(--md-sys-shape-full)] bg-[var(--md-sys-color-surface-container-high)]"><div className="h-full rounded-[var(--md-sys-shape-full)] bg-[var(--md-sys-color-primary)]" style={{ width: `${(value / max) * 100}%` }} /></div>
           </div>
         ))}
       </div>
@@ -98,56 +97,56 @@ export default function TelemetryPage() {
   const teamThisQuarter = rows.filter((row) => row.quarter === "Q3 2026").length;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-5 py-8 lg:px-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-8 md:px-8">
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div>
-          <p className="text-sm text-black/48">
+          <p className="md-label-large text-[var(--md-sys-color-primary)]">
             {viewer.actor === "partner"
               ? `${brand.partnerName} team view · ${viewer.name}`
               : viewer.actor === "pdm"
                 ? `My partners · ${viewer.name}`
                 : `Program performance · ${viewer.name}`}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Partner value-session telemetry</h1>
-          <p className="mt-2 text-sm text-black/55">
+          <h1 className="md-headline-medium mt-1">Partner value-session telemetry</h1>
+          <p className="md-body-medium mt-2 text-[var(--md-sys-color-on-surface-variant)]">
             {viewer.actor === "partner"
               ? `${brand.partnerName} cohort · ${rows.length} scoped sessions over eight quarters · live Heartland overlay included`
               : `Program cohort · 250 historical sessions over eight quarters · live Heartland overlay shown separately`}
           </p>
         </div>
-        <div className="w-full max-w-lg rounded-sm border border-black/10 bg-white p-4">
+        <div className="md-card-outlined w-full max-w-lg p-4">
           <div className="flex items-center gap-3">
-            <Switch id="customer-detail" checked={detail} onCheckedChange={setDetail} />
-            <label htmlFor="customer-detail" className="text-sm font-semibold">Customer-level detail</label>
-            <span className="ml-auto text-xs font-medium" style={{ color: detail ? brand.accent : undefined }}>{detail ? "On" : "Off"}</span>
+            <Switch id="customer-detail" checked={detail} onCheckedChange={setDetail} className="data-checked:bg-[var(--md-sys-color-primary)]" />
+            <label htmlFor="customer-detail" className="md-label-large">Customer-level detail</label>
+            <span className="md-label-medium ml-auto text-[var(--md-sys-color-primary)]">{detail ? "On" : "Off"}</span>
           </div>
-          <p className="mt-2 flex items-start gap-2 text-xs leading-5 text-black/52"><ShieldCheck className="mt-0.5 size-4 shrink-0" />Detail is shared only when {brand.partnerName} submits a funding claim.</p>
+          <p className="md-body-medium mt-2 flex items-start gap-2 text-[var(--md-sys-color-on-surface-variant)]"><ShieldCheck className="mt-1 size-4 shrink-0" />Detail is shared only when {brand.partnerName} submits a funding claim.</p>
         </div>
       </div>
 
-      <div className="mt-7 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {(viewer.actor === "partner"
           ? [
               ["My team's sessions in Q3 2026", teamThisQuarter.toLocaleString()],
               ["Funding claims submitted", summary.fundingClaimsSubmitted.toLocaleString()],
               ["Pilots funded", summary.pilotsFunded.toLocaleString()],
-              ["Funded pipeline value", formatCompactCurrency(summary.fundedPipelineValue)],
+              ["Funded pilot value", formatCompactCurrency(summary.fundedPipelineValue)],
             ]
           : [
               ["Sessions run", summary.sessionsRun.toLocaleString()],
               ["Pilots proposed", summary.pilotsProposed.toLocaleString()],
               ["Pilots funded", summary.pilotsFunded.toLocaleString()],
-              ["Funded pipeline value", formatCompactCurrency(summary.fundedPipelineValue)],
+              ["Funded pilot value", formatCompactCurrency(summary.fundedPipelineValue)],
             ]
         ).map(([label, value]) => (
-          <div key={label} className="bg-white p-5"><p className="text-sm text-black/50">{label}</p><p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p></div>
+          <div key={label} className="md-card-elevated p-5"><p className="md-label-medium text-[var(--md-sys-color-on-surface-variant)]">{label}</p><p className="md-headline-medium mt-2">{value}</p></div>
         ))}
       </div>
 
       {viewer.actor !== "partner" && (
-        <section className="mt-5 rounded-sm border border-black/10 bg-white p-5">
-          <h2 className="font-semibold">Program benchmark cohort · n=250</h2>
-          <p className="mt-3 text-sm leading-6 text-black/62">
+        <section className="md-card-outlined mt-5 p-5">
+          <h2 className="md-title-medium">Program benchmark cohort · n=250</h2>
+          <p className="md-body-medium mt-3 text-[var(--md-sys-color-on-surface-variant)]">
             Facilitated {telemetryBenchmarks.facilitatedConversionRate}% · self-service {telemetryBenchmarks.selfServiceConversionRate}% · self-service qualified {telemetryBenchmarks.selfServiceQualificationRate}% · value sprint {telemetryBenchmarks.valueSprintConversionRate}% · ghost ledger {telemetryBenchmarks.ghostLedgerConversionRate}%.
           </p>
         </section>
@@ -159,38 +158,38 @@ export default function TelemetryPage() {
         <Breakdown title={`Sessions by mechanic · ${viewer.actor === "partner" ? `${brand.partnerName} cohort n=${rows.length}` : `visible cohort n=${rows.length}`}`} rows={mechanicRows} details={mechanicDetails} />
       </div>
 
-      <section className="mt-5 rounded-sm border border-black/10 bg-white p-5">
-        <h2 className="font-semibold">Conversion funnel · scoped cohort n={rows.length}</h2>
+      <section className="md-card-outlined mt-5 p-5">
+        <h2 className="md-title-medium">Conversion funnel · scoped cohort n={rows.length}</h2>
         <div className="mt-5 grid gap-2 md:grid-cols-4">
           {funnel.map(([label, value], index) => (
-            <div key={label} className="relative border-l-2 bg-[#f7f7f5] p-4" style={{ borderColor: brand.accent, opacity: 1 - index * 0.12 }}>
-              <p className="text-xs text-black/50">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p>
+            <div key={label} className="relative rounded-[var(--md-sys-shape-small)] border-l-4 border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)] p-4" style={{ opacity: 1 - index * 0.08 }}>
+              <p className="md-label-medium text-[var(--md-sys-color-on-surface-variant)]">{label}</p><p className="md-title-large mt-1">{value}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mt-5 overflow-hidden rounded-sm border border-black/10 bg-white">
-        <div className="flex items-end justify-between border-b border-black/10 p-5">
-          <div><h2 className="font-semibold">Recent sessions</h2><p className="mt-1 text-xs text-black/48">{detail ? "Funding-claim detail visible" : "Aggregated partner view"}</p></div>
-          <span className="text-xs text-black/40">{viewer.actor === "partner" ? "Your team's recent rows" : "Live Heartland overlay shown first"}</span>
+      <section className="md-card-outlined mt-5 overflow-hidden">
+        <div className="flex items-end justify-between border-b border-[var(--md-sys-color-outline-variant)] p-5">
+          <div><h2 className="md-title-medium">Recent sessions</h2><p className="md-label-medium mt-1 text-[var(--md-sys-color-on-surface-variant)]">{detail ? "Funding-claim detail visible" : "Aggregated partner view"}</p></div>
+          <span className="md-label-medium text-[var(--md-sys-color-on-surface-variant)]">{viewer.actor === "partner" ? "Your team's recent rows" : "Live Heartland overlay shown first"}</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="bg-[#fafaf8] text-xs text-black/48"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Delivery</th><th className="px-5 py-3 font-medium">Mechanic</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th><th className="px-5 py-3 font-medium">Opportunity</th><th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
-            <tbody className="divide-y divide-black/10">
+          <table className="md-body-medium w-full min-w-[980px] text-left">
+            <thead className="md-label-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Delivery</th><th className="px-5 py-3 font-medium">Mechanic</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th><th className="px-5 py-3 font-medium">Opportunity</th><th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
+            <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
               {recent.map((row) => (
-                <tr key={row.id} className={row.id === graph.session.id ? "bg-[color-mix(in_srgb,var(--accent)_5%,white)]" : undefined}>
-                  {detail && <td className="px-5 py-3.5 font-medium">{row.customer ?? "Shared with claim"}</td>}
-                  <td className="px-5 py-3.5">{row.partner}</td>
-                  <td className="px-5 py-3.5">{row.industry}</td>
-                  <td className="px-5 py-3.5">{row.pattern}</td>
-                  <td className="px-5 py-3.5">{row.delivery === "self-service" ? "Self-service" : "Facilitated"}</td>
-                  <td className="px-5 py-3.5">{row.mechanic === "ghost-ledger" ? "Ghost ledger" : "Value sprint"}</td>
-                  <td className="px-5 py-3.5">{row.qualified ? "Qualified" : "Not qualified"}</td>
-                  <td className="px-5 py-3.5"><span className="rounded-sm border border-black/10 px-2 py-1 text-xs">{row.outcome}</span></td>
-                  <td className="px-5 py-3.5 font-medium">{row.opportunityValue ? formatCompactCurrency(row.opportunityValue) : "—"}</td>
-                  <td className="px-5 py-3.5 text-black/48">{row.quarter}</td>
+                <tr key={row.id} className={row.id === graph.session.id ? "bg-[var(--md-sys-color-primary-container)]" : "hover:bg-[color-mix(in_srgb,var(--md-sys-color-primary)_5%,transparent)]"}>
+                  {detail && <td className="px-5 py-4 font-medium">{row.customer ?? "Shared with claim"}</td>}
+                  <td className="px-5 py-4">{row.partner}</td>
+                  <td className="px-5 py-4">{row.industry}</td>
+                  <td className="px-5 py-4">{row.pattern}</td>
+                  <td className="px-5 py-4">{row.delivery === "self-service" ? "Self-service" : "Facilitated"}</td>
+                  <td className="px-5 py-4">{row.mechanic === "ghost-ledger" ? "Ghost ledger" : "Value sprint"}</td>
+                  <td className="px-5 py-4">{row.delivery === "facilitated" ? "—" : row.qualified ? "Qualified" : "Not qualified"}</td>
+                  <td className="px-5 py-4"><span className="md-chip min-h-7 px-2">{row.outcome}</span></td>
+                  <td className="px-5 py-4 font-medium">{row.opportunityValue ? formatCompactCurrency(row.opportunityValue) : "—"}</td>
+                  <td className="px-5 py-4 text-[var(--md-sys-color-on-surface-variant)]">{row.quarter}</td>
                 </tr>
               ))}
             </tbody>
@@ -198,7 +197,7 @@ export default function TelemetryPage() {
         </div>
       </section>
 
-      <div className="mt-5"><Link href="/pilot-spec" className={buttonVariants({ variant: "outline" })}><ArrowLeft /> Back to pilot spec</Link></div>
+      <div className="mt-5"><Link href="/pilot-spec" className="md-button-outlined"><ArrowLeft className="size-4" /> Back to pilot spec</Link></div>
     </div>
   );
 }

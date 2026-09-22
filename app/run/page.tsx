@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 import type { Mechanic } from "@/lib/seed";
 
 const suggestions = [
-  { attributedTo: "Robert Osei", text: "A reviewer must be able to see the source field beside every extracted value." },
-  { attributedTo: "Alex Chen", text: "We can isolate 500 anonymised claims without changing the claims platform." },
+  "A reviewer must be able to see the source field beside every extracted value.",
+  "We can isolate 500 anonymised claims without changing the claims platform.",
 ];
 
 export default function RunPage() {
@@ -24,12 +24,14 @@ export default function RunPage() {
   const people = withBrandPeople(brand);
   const agenda = agendaForSession(graph);
   const activeStep = agenda.find((step) => step.state === "active") ?? agenda[2];
+  const capturePeople = graph.attendees.map((attendee) => attendee.name);
   const [captureText, setCaptureText] = useState("");
-  const [person, setPerson] = useState("Dana Reyes");
+  const [person, setPerson] = useState(capturePeople[0] ?? "Participant");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const selfService = graph.session.delivery === "self-service";
-  const capturePerson = selfService ? "Dana Reyes" : person;
+  const selectedPerson = capturePeople.includes(person) ? person : capturePeople[0] ?? "Participant";
+  const capturePerson = selfService ? capturePeople[0] ?? "Respondent" : selectedPerson;
 
   function submitCapture(event: FormEvent) {
     event.preventDefault();
@@ -42,8 +44,11 @@ export default function RunPage() {
     if (!canEditSession) return;
     setSuggesting(true);
     window.setTimeout(() => {
-      const suggestion = suggestions[suggestionIndex % suggestions.length];
-      addCapture({ stepId: activeStep.id, ...suggestion });
+      const text = suggestions[suggestionIndex % suggestions.length];
+      const attributedTo = graph.session.scopeMode === "cold"
+        ? capturePeople[suggestionIndex % Math.max(capturePeople.length, 1)] ?? capturePerson
+        : suggestionIndex % suggestions.length === 0 ? "Robert Osei" : "Alex Chen";
+      addCapture({ stepId: activeStep.id, attributedTo, text });
       setSuggestionIndex((index) => index + 1);
       setSuggesting(false);
     }, 450);
@@ -53,7 +58,7 @@ export default function RunPage() {
     <div className="mx-auto max-w-[1440px]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-white px-5 py-4 lg:px-8">
         <div>
-          <h1 className="text-lg font-semibold">Heartland Mutual · value session</h1>
+          <h1 className="text-lg font-semibold">{graph.session.customerName} · value session</h1>
           <p className="mt-0.5 text-xs text-black/50">
             {brand.productName} · {selfService ? "Customer self-service · no partner facilitator present" : `Facilitated by ${graph.session.facilitator?.name ?? "Ravi Menon"} · ${people.facilitatorOrg}`}
           </p>
@@ -136,8 +141,8 @@ export default function RunPage() {
                     {!selfService && (
                       <label>
                         <span className="sr-only">Attribute capture to</span>
-                        <select value={person} onChange={(event) => setPerson(event.target.value)} className="h-9 rounded-sm border border-black/15 bg-white px-2 text-sm outline-none focus:border-[var(--accent)]">
-                          {["Dana Reyes", "Michelle Dorsey", "Alex Chen", "Robert Osei", "Sandeep Nair"].map((name) => <option key={name}>{name}</option>)}
+                        <select value={selectedPerson} onChange={(event) => setPerson(event.target.value)} className="h-9 rounded-sm border border-black/15 bg-white px-2 text-sm outline-none focus:border-[var(--brand-accent)]">
+                          {capturePeople.map((name) => <option key={name}>{name}</option>)}
                         </select>
                       </label>
                     )}
@@ -153,7 +158,7 @@ export default function RunPage() {
 
             <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-5">
               <Button variant="outline" onClick={suggestFollowUp} disabled={suggesting || !canEditSession}><Lightbulb />{suggesting ? "Thinking…" : "Suggest follow-up"}</Button>
-              <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--accent)] text-white hover:bg-[var(--accent-dark)]" })}>Generate business case <ArrowRight /></Link>
+              <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>Generate business case <ArrowRight /></Link>
             </footer>
           </div>
         </section>

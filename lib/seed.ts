@@ -2,6 +2,18 @@ export type Actor = "pdm" | "partner" | "cpm";
 export type Delivery = "facilitated" | "self-service";
 export type Mechanic = "value-sprint" | "ghost-ledger";
 export type FieldSource = "partner-portal" | "crm" | "typed" | "inferred";
+export type ScopeMode = "seeded" | "cold";
+
+export type ColdCompany = {
+  name: string;
+  industry: string;
+  sizeBand: string;
+};
+
+export type ColdAttendee = {
+  name: string;
+  role: string;
+};
 
 export type Session = {
   id: string;
@@ -21,6 +33,7 @@ export type Session = {
   fundingRoute: "invite-karen" | "brief-dana" | null;
   reusePriorPilotSpec: boolean | null;
   claimsVolumeChoice: "about-400" | "range-250-500" | "unconfirmed" | null;
+  scopeMode: ScopeMode;
 };
 
 export type AgendaStep = {
@@ -87,6 +100,8 @@ export type SessionGraph = {
   costComponents: CostComponent[];
   outcome: Outcome;
   attendees: Attendee[];
+  coldCompany: ColdCompany | null;
+  coldAttendees: ColdAttendee[];
 };
 
 export const patterns = [
@@ -95,7 +110,7 @@ export const patterns = [
     name: "Document-heavy intake",
     valueDrivers: ["handling time", "avoidable delay", "daily volume"],
     questions: ["Which documents create the longest queues?", "Where must a human stay in the loop?"],
-    requiredRoles: ["Operations owner", "Frontline supervisor", "Developer", "Compliance", "Infrastructure"],
+    requiredRoles: ["Operations owner", "Frontline supervisor", "Developer", "Compliance", "Infrastructure", "Economic buyer"],
     typicalValueRange: "$2M–$9M annual opportunity",
     knownGaps: [
       "Handwritten adjuster notes in the margin",
@@ -154,6 +169,7 @@ export const initialSessionGraph: SessionGraph = {
     fundingRoute: null,
     reusePriorPilotSpec: true,
     claimsVolumeChoice: null,
+    scopeMode: "seeded",
   },
   agenda: [
     ["where-it-hurts", "Where it hurts", "Walk me through what happens when a claim arrives.", 30, "done"],
@@ -212,7 +228,7 @@ export const initialSessionGraph: SessionGraph = {
     {
       id: "rework",
       label: "Rework and leakage",
-      confirmedBy: "Robert Osei",
+      confirmedBy: "Dana Reyes",
       inputs: [
         { label: "Claims per day", quantity: 400, unit: "claims/day" },
         { label: "Reopen rate", quantity: 0.06, unit: "share" },
@@ -243,6 +259,8 @@ export const initialSessionGraph: SessionGraph = {
     { id: "sandeep", name: "Sandeep Nair", role: "Director of Infrastructure", reason: "Confirms data access, security, and deployment boundaries.", source: "crm", attendance: "attending" },
     { id: "karen", name: "Karen Whitfield", role: "CFO", reason: "Economic buyer · invited, not attending", source: "crm", attendance: "invited-not-attending" },
   ],
+  coldCompany: null,
+  coldAttendees: [],
 };
 
 export const attendees: Attendee[] = initialSessionGraph.attendees;

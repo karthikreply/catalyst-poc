@@ -7,41 +7,45 @@ function qty(component: CostComponent, label: string) {
   return input.quantity;
 }
 
-export function componentMonthlyTotal(component: CostComponent): number {
+export function componentAnnualTotal(component: CostComponent): number {
   switch (component.id) {
     case "handling":
-      return calculateDailyValue(qty(component, "Claims per day"), qty(component, "Avoidable delay"), qty(component, "Handling cost")) * 30;
+      return calculateDailyValue(qty(component, "Claims per day"), qty(component, "Avoidable delay"), qty(component, "Handling cost")) * 250;
     case "review":
-      return Math.round(qty(component, "Hours per week") * 4.33 * qty(component, "Loaded rate"));
+      return Math.round(qty(component, "Hours per week") * 50 * qty(component, "Loaded rate"));
     case "rework":
-      return Math.round(qty(component, "Claims per day") * 30 * qty(component, "Reopen rate") * qty(component, "Cost each"));
+      return Math.round(qty(component, "Claims per day") * 250 * qty(component, "Reopen rate") * qty(component, "Cost each"));
     case "overtime":
-      return Math.round(qty(component, "Monthly overtime"));
+      return Math.round(qty(component, "Monthly overtime") * 12);
     default:
       throw new Error(`Unknown component ${component.id}`);
   }
 }
 
+export function componentMonthlyTotal(component: CostComponent): number {
+  return componentAnnualTotal(component) / 12;
+}
+
+export function ledgerAnnualTotal(components: CostComponent[]) {
+  return components.reduce((sum, row) => sum + componentAnnualTotal(row), 0);
+}
+
 export function ledgerMonthlyTotal(components: CostComponent[]) {
-  return components.reduce((sum, row) => sum + componentMonthlyTotal(row), 0);
+  return ledgerAnnualTotal(components) / 12;
 }
 
-export function perSecondRate(monthlyTotal: number) {
-  return monthlyTotal / (30 * 24 * 3600);
-}
-
-export function annualFromMonthly(monthlyTotal: number) {
-  return Math.round(monthlyTotal * 12);
+export function perSecondRate(annualTotal: number) {
+  return annualTotal / (365 * 24 * 3600);
 }
 
 export function freezeLedger(graph: SessionGraph): SessionGraph {
-  const monthly = ledgerMonthlyTotal(graph.costComponents);
+  const annual = ledgerAnnualTotal(graph.costComponents);
   return {
     ...graph,
     session: { ...graph.session, ledgerFrozen: true },
     outcome: {
       ...graph.outcome,
-      annualValue: annualFromMonthly(monthly),
+      annualValue: annual,
       partiallyEstimated: graph.costComponents.some((row) => row.confirmedBy === null),
     },
   };

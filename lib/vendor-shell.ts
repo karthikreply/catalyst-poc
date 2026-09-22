@@ -1,0 +1,30 @@
+export const vendorNavItems = [
+  { label: "Dashboard", href: null, illustrative: true },
+  { label: "Programs", href: null, illustrative: true },
+  { label: "Value sessions", href: "/scope", illustrative: false },
+  { label: "Funding", href: "/funding", illustrative: false },
+  { label: "Telemetry", href: "/telemetry", illustrative: false },
+  { label: "Support", href: null, illustrative: true },
+] as const;
+
+const flowLabels: Record<string, string> = {
+  "/scope": "Scope",
+  "/plan": "Plan",
+  "/run": "Run",
+  "/artifact": "Artifact",
+  "/pilot-spec": "Pilot spec",
+};
+
+export function isBrandFlowPath(pathname: string) {
+  return Object.keys(flowLabels).some((path) => pathname.startsWith(path));
+}
+
+export function breadcrumbForPath(pathname: string) {
+  if (pathname === "/") return ["Partner network", "Dashboard"];
+  if (pathname.startsWith("/funding")) return ["Partner network", "Funding"];
+  if (pathname.startsWith("/telemetry")) return ["Partner network", "Telemetry"];
+  const flowPath = Object.keys(flowLabels).find((path) => pathname.startsWith(path));
+  return flowPath
+    ? ["Partner network", "Value sessions", flowLabels[flowPath]]
+    : ["Partner network"];
+}

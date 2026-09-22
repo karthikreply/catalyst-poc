@@ -1,4 +1,4 @@
-export type ScopeMode = "seeded" | "cold";
+export type { ScopeMode } from "../seed";
 
 export type AccountNote = {
   date: string;

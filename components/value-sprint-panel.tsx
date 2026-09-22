@@ -20,6 +20,7 @@ export function ValueSprintPanel() {
           <span className="ml-1 text-xl tracking-normal text-black/45">/day</span>
         </div>
         <p className="mt-3 text-sm text-black/55">{formatCurrency(graph.outcome.annualValue)} per year at 250 working days</p>
+        {selfService && <p className="mt-1 text-sm font-medium text-amber-800">Unverified estimate</p>}
       </div>
       <div className="bg-white p-5">
         <p className="mb-3 text-sm font-medium">Confirmed inputs</p>
@@ -33,7 +34,7 @@ export function ValueSprintPanel() {
                 </span>
               </span>
               {" "}
-              <span className="flex items-center rounded-sm border border-black/15 bg-white px-2 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--accent)_15%,transparent)]">
+              <span className="flex items-center rounded-sm border border-black/15 bg-white px-2 focus-within:border-[var(--brand-accent)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--brand-accent)_15%,transparent)]">
                 {input.id === "handling" && <span className="text-black/45">$</span>}
                 <input
                   aria-label={input.label}

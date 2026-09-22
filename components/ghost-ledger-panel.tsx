@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
-import { annualFromMonthly, componentMonthlyTotal, ledgerMonthlyTotal, perSecondRate } from "@/lib/cost-model";
+import { componentMonthlyTotal, ledgerAnnualTotal, ledgerMonthlyTotal, perSecondRate } from "@/lib/cost-model";
 import { formatCurrency, formatPreciseCurrency } from "@/lib/value";
 
 export function GhostLedgerPanel() {
   const { graph, updateCostInput, freezeLedgerNow, canEditSession, viewer } = useSession();
+  const annual = useMemo(() => ledgerAnnualTotal(graph.costComponents), [graph.costComponents]);
   const monthly = useMemo(() => ledgerMonthlyTotal(graph.costComponents), [graph.costComponents]);
-  const rate = perSecondRate(monthly);
+  const rate = perSecondRate(annual);
   const frozen = graph.session.ledgerFrozen || viewer.actor === "cpm" || !canEditSession;
   const [elapsed, setElapsed] = useState(0);
 
@@ -23,19 +24,22 @@ export function GhostLedgerPanel() {
     return () => window.clearInterval(timer);
   }, [frozen, monthly]);
 
-  const liveTotal = frozen ? annualFromMonthly(monthly) : Math.round(rate * elapsed);
+  const liveTotal = frozen ? annual : Math.round(rate * elapsed);
 
   return (
     <div className="mt-7 rounded-sm border border-black/10 bg-white p-6 lg:p-8">
       <p className="text-sm font-medium text-black/50">{frozen ? "Frozen cost of inaction" : "Cost of inaction, ticking"}</p>
       <div key={`${monthly}-${frozen}`} className="value-flash mt-2 text-5xl font-semibold tracking-[-0.05em] md:text-6xl">
-        {formatCurrency(frozen ? annualFromMonthly(monthly) : liveTotal)}
+        {formatCurrency(frozen ? annual : liveTotal)}
         <span className="ml-1 text-xl tracking-normal text-black/45">{frozen ? "/year" : " accumulated"}</span>
       </div>
       <p className="mt-2 text-sm text-black/55">
         {formatCurrency(monthly)} / month · {formatPreciseCurrency(rate)} / second
         {frozen ? " · committed figure, not exploratory." : ""}
       </p>
+      {graph.session.delivery === "self-service" && (
+        <p className="mt-1 text-sm font-medium text-amber-800">Unverified estimate</p>
+      )}
       {viewer.actor === "cpm" && (
         <p className="mt-3 text-sm text-black/58">Historical session record — the platform vendor sees completed evidence shared by the partner, not live session activity.</p>
       )}
@@ -57,7 +61,7 @@ export function GhostLedgerPanel() {
                     step={input.label === "Reopen rate" ? "0.01" : "1"}
                     value={input.quantity}
                     onChange={(event) => updateCostInput(component.id, input.label, Number(event.target.value))}
-                    className="mt-1 w-28 rounded-sm border border-black/15 px-2 py-1.5 text-sm font-semibold tabular-nums outline-none focus:border-[var(--accent)]"
+                    className="mt-1 w-28 rounded-sm border border-black/15 px-2 py-1.5 text-sm font-semibold tabular-nums outline-none focus:border-[var(--brand-accent)]"
                   />
                 </label>
               ))}
@@ -67,7 +71,7 @@ export function GhostLedgerPanel() {
         ))}
       </div>
       {!frozen && (
-        <Button className="mt-5 bg-[var(--accent)] hover:bg-[var(--accent-dark)]" onClick={freezeLedgerNow}>
+        <Button className="mt-5 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" onClick={freezeLedgerNow}>
           Freeze the ledger
         </Button>
       )}

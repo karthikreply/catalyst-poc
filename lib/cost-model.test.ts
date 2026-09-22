@@ -2,26 +2,41 @@ import { describe, expect, it } from "vitest";
 
 import { initialSessionGraph } from "./seed";
 import {
-  annualFromMonthly,
+  componentAnnualTotal,
   componentMonthlyTotal,
   freezeLedger,
+  ledgerAnnualTotal,
   ledgerMonthlyTotal,
   perSecondRate,
 } from "./cost-model";
 import { calculateDailyValue } from "./value";
 
 describe("ghost ledger cost model", () => {
-  it("derives monthly totals from inputs only", () => {
+  it("annualises labour-derived components on 250 working days", () => {
     const handling = initialSessionGraph.costComponents.find((row) => row.id === "handling")!;
-    expect(componentMonthlyTotal(handling)).toBe(calculateDailyValue(400, 2, 38.75) * 30);
-    expect(ledgerMonthlyTotal(initialSessionGraph.costComponents)).toBe(1_219_004);
-    expect(perSecondRate(1_219_004)).toBeCloseTo(1_219_004 / (30 * 24 * 3600), 6);
+    const review = initialSessionGraph.costComponents.find((row) => row.id === "review")!;
+    const rework = initialSessionGraph.costComponents.find((row) => row.id === "rework")!;
+    const overtime = initialSessionGraph.costComponents.find((row) => row.id === "overtime")!;
+
+    expect(componentAnnualTotal(handling)).toBe(calculateDailyValue(400, 2, 38.75) * 250);
+    expect(componentAnnualTotal(review)).toBe(340 * 50 * 61);
+    expect(componentAnnualTotal(rework)).toBe(400 * 250 * 0.06 * 210);
+    expect(componentAnnualTotal(overtime)).toBe(48_000 * 12);
+    expect(componentMonthlyTotal(handling)).toBeCloseTo(7_750_000 / 12, 6);
   });
 
-  it("freeze writes annual into outcome and does not edit inputs", () => {
+  it("derives every monthly figure from the shared annual total", () => {
+    const annual = ledgerAnnualTotal(initialSessionGraph.costComponents);
+    expect(annual).toBe(10_623_000);
+    expect(ledgerMonthlyTotal(initialSessionGraph.costComponents)).toBeCloseTo(annual / 12, 6);
+    expect(perSecondRate(annual)).toBeCloseTo(annual / (365 * 24 * 3600), 8);
+  });
+
+  it("freezes the exact annual total that the artifact consumes", () => {
     const frozen = freezeLedger(initialSessionGraph);
     expect(frozen.session.ledgerFrozen).toBe(true);
-    expect(frozen.outcome.annualValue).toBe(annualFromMonthly(1_219_004));
+    expect(frozen.outcome.annualValue).toBe(ledgerAnnualTotal(initialSessionGraph.costComponents));
+    expect(frozen.outcome.annualValue).toBe(10_623_000);
     expect(frozen.costComponents).toEqual(initialSessionGraph.costComponents);
   });
 

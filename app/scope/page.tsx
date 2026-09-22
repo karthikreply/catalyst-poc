@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Plus, TriangleAlert } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/components/session-provider";
 import {
   crmBadge,
   deriveKarenObservation,
   heartlandAccountRecord,
   prmBadge,
-  type ScopeMode,
 } from "@/lib/seed/accountRecord";
 import {
   claimsPayoffCopy,
+  missingColdRoles,
   type ClaimsVolumeChoice,
   type FundingRoute,
 } from "@/lib/session";
@@ -29,16 +28,6 @@ const claimsChoices: { label: string; value: ClaimsVolumeChoice }[] = [
   { label: "Not confirmed yet", value: "unconfirmed" },
 ];
 
-const coldQuestions = [
-  { question: "Is there an active opportunity?", chips: ["Stage 2 opportunity", "Early discovery", "No opportunity yet"] },
-  { question: "Roughly how many claims a day?", chips: ["~400 a day", "250–500 a day", "Not confirmed yet"] },
-  { question: "Who’s likely to be in the room?", chips: ["Ops, supervisor, IT, compliance", "Claims and IT leads", "The full working team"] },
-  { question: "Is compliance a factor?", chips: ["Audit trail required", "Compliance is joining", "Human review is mandatory"] },
-  { question: "Has the CFO engaged?", chips: ["CFO aware", "Champion briefed the CFO", "Economic buyer not attending"] },
-];
-
-const coldPlaceholder = "Mid-size insurer in Iowa. Claims intake is slow — lots of manual PDF reading.";
-
 export default function ScopePage() {
   const {
     brand,
@@ -48,23 +37,27 @@ export default function ScopePage() {
     applyFunding,
     applyPattern,
     applyReusePilot,
-    setCustomerProfile,
+    setColdScope,
   } = useSession();
-  const [mode, setMode] = useState<ScopeMode>("seeded");
-  const [coldStarted, setColdStarted] = useState(false);
-  const [answers, setAnswers] = useState<string[]>([]);
-  const [thinking, setThinking] = useState(false);
+  const mode = graph.session.scopeMode;
   const [adjusting, setAdjusting] = useState<"pattern" | "spec" | null>(null);
   const fundingRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
-  const complete = answers.length === coldQuestions.length;
   const observation = mode === "seeded" ? deriveKarenObservation(heartlandAccountRecord) : null;
-  const currentQuestion = coldQuestions[answers.length];
   const claimsChoice = graph.session.claimsVolumeChoice;
   const fundingRoute = graph.session.fundingRoute;
   const seededComplete = Boolean(claimsChoice && fundingRoute);
-  const customerName = graph.session.customerName;
-  const context = graph.session.customerContext;
+  const coldCompany = graph.coldCompany ?? { name: "", industry: "", sizeBand: "" };
+  const coldAttendees = graph.coldAttendees.length
+    ? graph.coldAttendees
+    : Array.from({ length: 3 }, () => ({ name: "", role: "" }));
+  const coldComplete = Boolean(
+    coldCompany.name.trim() &&
+    coldCompany.industry.trim() &&
+    coldCompany.sizeBand.trim() &&
+    coldAttendees.filter((person) => person.name.trim() && person.role.trim()).length >= 3,
+  );
+  const coldGaps = missingColdRoles(graph);
 
   function revealNext(target: "funding" | "done") {
     requestAnimationFrame(() => {
@@ -83,20 +76,12 @@ export default function ScopePage() {
     if (claimsChoice) revealNext("done");
   }
 
-  function choose(answer: string) {
-    if (!canEditSession) return;
-    setAnswers((current) => [...current, answer]);
-    setThinking(true);
-    window.setTimeout(() => setThinking(false), 380);
-  }
-
   function clearToColdMode() {
     if (!canEditSession) return;
-    setMode("cold");
-    setCustomerProfile({ name: "", context: "" });
-    setAnswers([]);
-    setThinking(false);
-    setColdStarted(false);
+    setColdScope(
+      { name: "", industry: "", sizeBand: "" },
+      Array.from({ length: 3 }, () => ({ name: "", role: "" })),
+    );
   }
 
   return (
@@ -106,7 +91,7 @@ export default function ScopePage() {
           <p className="text-sm text-black/48">{mode === "seeded" ? "Seeded from the account record" : "Cold account"}</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Scope the value session</h1>
           <p className="mt-2 text-sm text-black/55">
-            {mode === "seeded" ? "Two questions · about three minutes" : "Five questions · about five minutes"}
+            {mode === "seeded" ? "Two questions · about three minutes" : "Company and attendees · about five minutes"}
           </p>
           {mode === "seeded" && (
             <p className="mt-1 text-sm text-black/55">You&apos;ve already done this work — it&apos;s in your CRM.</p>
@@ -164,7 +149,7 @@ export default function ScopePage() {
             <section className="rounded-sm border border-black/10 bg-white p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-semibold">Partner record</h2>
-                <span className="rounded-sm border border-[var(--accent)]/30 bg-[color-mix(in_srgb,var(--accent)_8%,white)] px-2 py-0.5 text-[11px] text-black/70">
+                <span className="rounded-sm border border-[var(--brand-accent)]/30 bg-[color-mix(in_srgb,var(--brand-accent)_8%,white)] px-2 py-0.5 text-[11px] text-black/70">
                   {prmBadge}
                 </span>
               </div>
@@ -320,16 +305,16 @@ export default function ScopePage() {
               )}
 
               {seededComplete && (
-                <div ref={doneRef} className="scroll-mt-24 rounded-sm border p-4" style={{ borderColor: "var(--accent)" }}>
+                <div ref={doneRef} className="scroll-mt-24 rounded-sm border p-4" style={{ borderColor: "var(--brand-accent)" }}>
                   <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Check className="size-4" style={{ color: "var(--accent)" }} /> Ready for the session plan
+                    <Check className="size-4" style={{ color: "var(--brand-accent)" }} /> Ready for the session plan
                   </p>
                   <p className="mt-2 text-sm leading-6 text-black/55">
                     Volume is on the case, and the funding route is explicit.
                   </p>
                   <Link
                     href="/plan"
-                    className={cn(buttonVariants({ className: "mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]" }))}
+                    className={cn(buttonVariants({ className: "mt-4 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}
                   >
                     Review session plan <ArrowRight />
                   </Link>
@@ -341,58 +326,90 @@ export default function ScopePage() {
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
           <section className="rounded-sm border border-black/10 bg-white p-6">
-            <label className="text-sm font-medium" htmlFor="customer-name">Customer account</label>
-            <Input
-              id="customer-name"
-              value={customerName}
-              readOnly={!canEditSession}
-              onChange={(event) => setCustomerProfile({ name: event.target.value })}
-              placeholder="Customer name"
-              className="mt-2 rounded-sm"
-            />
-            <label className="mt-5 block text-sm font-medium" htmlFor="customer-context">What do you know so far?</label>
-            <Textarea
-              id="customer-context"
-              value={context}
-              readOnly={!canEditSession}
-              onChange={(event) => setCustomerProfile({ context: event.target.value })}
-              placeholder={coldPlaceholder}
-              className="mt-2 min-h-44 resize-none rounded-sm bg-white leading-6"
-            />
-            {!coldStarted && (
-              <Button
-                onClick={() => canEditSession && setColdStarted(true)}
-                className="mt-3 bg-[var(--accent)] hover:bg-[var(--accent-dark)]"
-              >
-                <Sparkles /> Start guided scope
-              </Button>
-            )}
+            <h2 className="text-lg font-semibold">Company</h2>
+            {([
+              ["name", "Company name", "Northwind Insurance"],
+              ["industry", "Industry", "Insurance"],
+              ["sizeBand", "Size band", "$500M–$1B"],
+            ] as const).map(([field, label, placeholder]) => (
+              <label key={field} className="mt-4 block text-sm font-medium">
+                {label}
+                <Input
+                  value={coldCompany[field]}
+                  readOnly={!canEditSession}
+                  onChange={(event) => setColdScope({ ...coldCompany, [field]: event.target.value }, coldAttendees)}
+                  placeholder={placeholder}
+                  className="mt-2 rounded-sm"
+                />
+              </label>
+            ))}
+            <p className="mt-4 text-xs leading-5 text-black/48">Industry drives pattern matching. Size stays coarse; exact revenue is not required.</p>
           </section>
 
-          {coldStarted ? (
-            <QuestionPanel
-              title="Guided scope"
-              intro="Five fixed questions shape the session without turning this into an open-ended chat."
-              questions={coldQuestions}
-              answers={answers}
-              currentQuestion={currentQuestion}
-              complete={complete}
-              thinking={thinking}
-              canAnswer={canEditSession}
-              onChoose={choose}
-              completeHref="/plan"
-            />
-          ) : (
-            <section className="grid min-h-96 place-items-center rounded-sm border border-black/10 bg-white p-6 text-center">
-              <p className="max-w-xs text-sm leading-6 text-black/45">Enter the context you have, then start the guided scope.</p>
-            </section>
-          )}
+          <section className="rounded-sm border border-black/10 bg-white p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Who is likely to be in the room?</h2>
+                <p className="mt-1 text-sm text-black/48">Three to six people. The pattern supplies why each role matters.</p>
+              </div>
+              {coldAttendees.length < 6 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setColdScope(coldCompany, [...coldAttendees, { name: "", role: "" }])}
+                >
+                  <Plus /> Add person
+                </Button>
+              )}
+            </div>
+            <div className="mt-5 space-y-3">
+              {coldAttendees.map((person, index) => (
+                <div key={index} className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    aria-label={`Attendee ${index + 1} name`}
+                    value={person.name}
+                    readOnly={!canEditSession}
+                    placeholder="Name"
+                    onChange={(event) => setColdScope(
+                      coldCompany,
+                      coldAttendees.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row),
+                    )}
+                  />
+                  <Input
+                    aria-label={`Attendee ${index + 1} role`}
+                    value={person.role}
+                    readOnly={!canEditSession}
+                    placeholder="Role"
+                    onChange={(event) => setColdScope(
+                      coldCompany,
+                      coldAttendees.map((row, rowIndex) => rowIndex === index ? { ...row, role: event.target.value } : row),
+                    )}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {graph.attendees.length >= 3 && coldGaps.length > 0 && (
+              <div className="mt-5 rounded-sm border border-amber-300 bg-amber-50 p-4">
+                <p className="text-sm font-semibold">Roles missing for this pattern</p>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {coldGaps.map((gap) => <li key={gap.role}><strong>{gap.role}</strong> — {gap.reason}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {coldComplete && (
+              <Link href="/plan" className={cn(buttonVariants({ className: "mt-5 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}>
+                Review session plan <ArrowRight />
+              </Link>
+            )}
+          </section>
         </div>
       )}
     </div>
   );
 }
-
 function ChoiceChip({
   selected,
   disabled,
@@ -415,100 +432,9 @@ function ChoiceChip({
       }}
       aria-pressed={selected}
       aria-disabled={disabled}
-      className={cn("rounded-full font-normal", selected && "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,white)]")}
+      className={cn("rounded-full font-normal", selected && "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_8%,white)]")}
     >
       {children}
     </Button>
-  );
-}
-
-type Question = {
-  question: string;
-  reason?: string;
-  chips: string[];
-};
-
-function QuestionPanel({
-  title,
-  intro,
-  questions,
-  answers,
-  currentQuestion,
-  complete,
-  thinking,
-  canAnswer,
-  onChoose,
-  completeHref,
-}: {
-  title: string;
-  intro: string;
-  questions: readonly Question[];
-  answers: string[];
-  currentQuestion: Question | undefined;
-  complete: boolean;
-  thinking: boolean;
-  canAnswer: boolean;
-  onChoose: (answer: string) => void;
-  completeHref: string;
-}) {
-  const latestRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!answers.length) return;
-    latestRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [answers.length, thinking, complete]);
-
-  return (
-    <section aria-live="polite" className="rounded-sm border border-black/10 bg-white p-5 md:p-7">
-      <div className="flex items-center gap-2 border-b border-black/10 pb-4">
-        <span className="grid size-7 place-items-center rounded-sm bg-black text-xs font-semibold text-white">AI</span>
-        <div>
-          <p className="text-sm font-semibold">{title}</p>
-          <p className="text-xs text-black/45">Seeded responses · no live model</p>
-        </div>
-      </div>
-      <p className="mt-5 max-w-2xl text-sm leading-6 text-black/58">{intro}</p>
-      <div className="mt-5 space-y-5">
-        {answers.map((answer, index) => (
-          <div key={`${answer}-${index}`} className="space-y-2">
-            <div className="max-w-[90%] rounded-sm bg-[#f5f5f2] p-3 text-sm">
-              <p>{questions[index].question}</p>
-            </div>
-            <div className="ml-auto w-fit max-w-[90%] rounded-sm px-3 py-2 text-sm text-white" style={{ background: "var(--accent)" }}>{answer}</div>
-          </div>
-        ))}
-        {!complete && !thinking && currentQuestion && (
-          <div>
-            <p className="mb-2 text-xs text-black/45">{answers.length + 1} of {questions.length}</p>
-            <div className="max-w-[90%] rounded-sm bg-[#f5f5f2] p-3 text-sm">
-              <p>{currentQuestion.question}</p>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {currentQuestion.chips.map((chip) => (
-                <Button
-                  key={chip}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onChoose(chip)}
-                  className="rounded-full font-normal"
-                  aria-disabled={!canAnswer}
-                >
-                  {chip}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-        {thinking && <p className="text-xs text-black/42">Preparing the next question…</p>}
-        {complete && !thinking && (
-          <div className="rounded-sm border p-4" style={{ borderColor: "var(--accent)" }}>
-            <p className="flex items-center gap-2 text-sm font-semibold"><Check className="size-4" style={{ color: "var(--accent)" }} /> Matched pattern: Document-heavy intake</p>
-            <p className="mt-2 text-sm leading-6 text-black/55">The room has the right operating, technical, compliance, and funding voices. The plan is ready.</p>
-            <Link href={completeHref} className={cn(buttonVariants({ className: "mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]" }))}>Review session plan <ArrowRight /></Link>
-          </div>
-        )}
-        <div ref={latestRef} aria-hidden className="scroll-mt-24" />
-      </div>
-    </section>
   );
 }

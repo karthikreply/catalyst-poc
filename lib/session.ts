@@ -1,12 +1,109 @@
 import type { Brand } from "./brands";
-import { prework, type Actor, type Delivery, type Mechanic, type SessionGraph } from "./seed";
+import { ledgerAnnualTotal } from "./cost-model";
+import {
+  patterns,
+  prework,
+  type Actor,
+  type ColdAttendee,
+  type ColdCompany,
+  type Delivery,
+  type Mechanic,
+  type SessionGraph,
+} from "./seed";
 import { calculateAnnualValue, calculateDailyValue, formatCurrency, formatPreciseCurrency } from "./value";
 
 export type Viewer = { actor: Actor; name: string; org: string };
 export type ClaimsVolumeChoice = "about-400" | "range-250-500" | "unconfirmed";
 export type FundingRoute = "invite-karen" | "brief-dana";
 
+const coldRoleRules = [
+  { role: "Operations owner", matches: ["operations", "claims ops", "vp claims", "head of claims"], reason: "Owns the operating outcome and can sponsor the pilot." },
+  { role: "Frontline supervisor", matches: ["supervisor", "frontline", "team lead", "claims manager"], reason: "Brings the frontline workflow and handling-cost evidence." },
+  { role: "Developer", matches: ["developer", "engineer", "technical lead"], reason: "Can confirm integration constraints and own the pilot." },
+  { role: "Compliance", matches: ["compliance", "risk", "audit"], reason: "Sessions that invite compliance late lose two weeks." },
+  { role: "Infrastructure", matches: ["infrastructure", "platform", "cloud", "architect"], reason: "Confirms data access, security, and deployment boundaries." },
+  { role: "Economic buyer", matches: ["cfo", "finance", "economic buyer", "executive sponsor"], reason: "Can fund the pilot." },
+] as const;
+
+function matchedColdRole(role: string) {
+  const normalized = role.toLowerCase();
+  return coldRoleRules.find((rule) => rule.matches.some((term) => normalized.includes(term)));
+}
+
+function patternForIndustry(industry: string) {
+  const normalized = industry.toLowerCase();
+  if (/(bank|financial|fraud)/.test(normalized)) return "fraud-triage";
+  if (/(contact|call centre|telecom|retail)/.test(normalized)) return "contact-centre-summarisation";
+  if (/(knowledge|professional services)/.test(normalized)) return "knowledge-retrieval";
+  return "document-intake";
+}
+
+export function applyColdScope(
+  graph: SessionGraph,
+  company: ColdCompany,
+  attendees: ColdAttendee[],
+): SessionGraph {
+  return {
+    ...graph,
+    session: {
+      ...graph.session,
+      scopeMode: "cold",
+      customerName: company.name,
+      customerContext: `${company.sizeBand} ${company.industry}`,
+      industry: company.industry,
+      patternId: patternForIndustry(company.industry),
+    },
+    coldCompany: company,
+    coldAttendees: attendees,
+    captures: [],
+    valueInputs: graph.valueInputs.map((input) => ({
+      ...input,
+      confirmedBy: null,
+      respondentConfirmed: false,
+    })),
+    costComponents: graph.costComponents.map((component) => ({
+      ...component,
+      confirmedBy: null,
+    })),
+    outcome: {
+      ...graph.outcome,
+      owner: attendees.find((person) => matchedColdRole(person.role)?.role === "Developer")?.name ?? null,
+      partiallyEstimated: true,
+    },
+    attendees: attendees.filter((person) => person.name.trim() && person.role.trim()).map((person, index) => {
+      const match = matchedColdRole(person.role);
+      return {
+        id: `cold-attendee-${index + 1}`,
+        name: person.name,
+        role: person.role,
+        reason: match?.reason ?? "Participant named during cold scope.",
+        source: "typed",
+        attendance: "attending",
+      };
+    }),
+  };
+}
+
+export function missingColdRoles(graph: SessionGraph) {
+  if (graph.session.scopeMode !== "cold") return [];
+  const pattern = patterns.find((item) => item.id === graph.session.patternId);
+  if (!pattern) return [];
+  const matched = new Set<string>(
+    graph.coldAttendees.flatMap((person) => {
+      const role = matchedColdRole(person.role);
+      return role ? [role.role] : [];
+    }),
+  );
+  return pattern.requiredRoles
+    .filter((role) => !matched.has(role))
+    .map((role) => ({
+      role,
+      reason: coldRoleRules.find((rule) => rule.role === role)?.reason ?? `Add a ${role.toLowerCase()} for this pattern.`,
+    }));
+}
+
 export function shouldResetGraph(_pathname: string) {
+  void _pathname;
   return false;
 }
 
@@ -18,6 +115,8 @@ export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): Sess
   const valueInputs = graph.valueInputs.map((input) =>
     delivery === "self-service"
       ? { ...input, confirmedBy: null, respondentConfirmed: true }
+      : graph.session.scopeMode === "cold"
+        ? { ...input, confirmedBy: null }
       : {
           ...input,
           confirmedBy: input.id === "delay" ? "Dana Reyes" : "Michelle Dorsey",
@@ -42,7 +141,10 @@ export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): Sess
 }
 
 export function applyMechanic(graph: SessionGraph, mechanic: Mechanic): SessionGraph {
-  return { ...graph, session: { ...graph.session, mechanic } };
+  return bindAnnualValue({
+    ...graph,
+    session: { ...graph.session, mechanic, ledgerFrozen: false },
+  });
 }
 
 export function agendaForSession(graph: SessionGraph) {
@@ -75,10 +177,10 @@ export function preworkForMechanic(mechanic: Mechanic) {
   ];
 }
 
-export function pdmPartnerInvitationCopy(brand: Brand) {
+export function pdmPartnerInvitationCopy(brand: Brand, customerName = "Heartland Mutual Insurance") {
   return `Hi Ravi,
 
-Heartland Mutual Insurance looks ready for a focused value session on an account you own. Run it with the customer team to turn the claims-intake opportunity into a scoped six-week pilot.
+${customerName} looks ready for a focused value session on an account you own. Run it with the customer team to turn the opportunity into a scoped six-week pilot.
 
 There is partner development funding available if the evidence supports the pilot, and the resulting business case carries ${brand.partnerName}'s brand. You keep the customer relationship and the next step.
 
@@ -104,7 +206,10 @@ export function bindAnnualValue(graph: SessionGraph): SessionGraph {
   const claims = graph.valueInputs.find((input) => input.id === "claims")?.quantity ?? 0;
   const delay = graph.valueInputs.find((input) => input.id === "delay")?.quantity ?? 0;
   const handling = graph.valueInputs.find((input) => input.id === "handling")?.quantity ?? 0;
-  return { ...graph, outcome: { ...graph.outcome, annualValue: calculateAnnualValue(claims, delay, handling) } };
+  const annualValue = graph.session.mechanic === "ghost-ledger"
+    ? ledgerAnnualTotal(graph.costComponents)
+    : calculateAnnualValue(claims, delay, handling);
+  return { ...graph, outcome: { ...graph.outcome, annualValue } };
 }
 
 export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolumeChoice): SessionGraph {
@@ -117,13 +222,18 @@ export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolum
   );
   const costComponents = graph.costComponents.map((component) => ({
     ...component,
+    confirmedBy: component.id === "handling"
+      ? choice === "unconfirmed"
+        ? null
+        : component.confirmedBy ?? "Michelle Dorsey"
+      : component.confirmedBy,
     inputs: component.inputs.map((input) =>
       input.label === "Claims per day" ? { ...input, quantity } : input,
     ),
   }));
   return bindAnnualValue({
     ...graph,
-    session: { ...graph.session, claimsVolumeChoice: choice },
+    session: { ...graph.session, claimsVolumeChoice: choice, ledgerFrozen: false },
     valueInputs,
     costComponents,
     outcome: { ...graph.outcome, partiallyEstimated: choice !== "about-400" },
@@ -165,8 +275,15 @@ export function artifactPilotScopeCopy(graph: SessionGraph, brand: Brand) {
   return `${base}; reuses ${brand.partnerName}'s prior document-pattern pilot spec`;
 }
 
-export function artifactActions(actor: Actor, qualified: boolean) {
+export function artifactActions(actor: Actor, qualified: boolean, delivery: Delivery) {
   if (actor === "partner") {
+    if (delivery === "self-service") {
+      return {
+        primary: "Request a facilitated session",
+        secondary: "Start DAF funding request",
+        tertiary: "Contact my partner manager with this business case",
+      };
+    }
     return {
       primary: "Start DAF funding request",
       secondary: qualified ? "Request a facilitated session" : "Schedule pilot kickoff",
@@ -224,6 +341,14 @@ export function applyFundingRoute(graph: SessionGraph, route: FundingRoute): Ses
 }
 
 export function fundingAskCopy(graph: SessionGraph) {
+  if (graph.session.scopeMode === "cold") {
+    const economicBuyer = graph.attendees.find((attendee) => /cfo|finance|economic buyer|executive sponsor/i.test(attendee.role));
+    const technicalOwner = graph.attendees.find((attendee) => /developer|engineer|technical lead/i.test(attendee.role));
+    if (!economicBuyer) {
+      return "Confirm an economic buyer before requesting funding for the six-week pilot.";
+    }
+    return `${economicBuyer.name}: fund the six-week pilot${technicalOwner ? ` and allow ${technicalOwner.name} to prepare the pilot data` : ""}.`;
+  }
   if (graph.session.fundingRoute === "brief-dana") {
     return "Dana Reyes: carry the funding ask. Brief Karen so she can fund the six-week pilot and allow Alex Chen’s team to prepare 500 anonymised claims.";
   }

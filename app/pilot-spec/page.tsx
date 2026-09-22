@@ -32,7 +32,10 @@ export default function PilotSpecPage() {
   const [copied, setCopied] = useState(false);
   const [briefCopied, setBriefCopied] = useState(false);
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
-  const compliance = graph.captures.find((capture) => capture.attributedTo === "Robert Osei");
+  const compliancePerson = graph.attendees.find((attendee) => /compliance|risk|audit/i.test(attendee.role));
+  const compliance = graph.captures.find((capture) => capture.attributedTo === compliancePerson?.name);
+  const owner = graph.outcome.owner ?? "Owner not yet confirmed";
+  const constraintAttribution = compliancePerson ? `${compliancePerson.name}, ${compliancePerson.role}` : "Confirmer needed";
 
   async function copySnippet() {
     await navigator.clipboard.writeText(enableList);
@@ -44,7 +47,7 @@ export default function PilotSpecPage() {
     const brief = [
       `Pilot setup brief — ${graph.session.customerName}`,
       `Use case: ${graph.outcome.useCase}`,
-      `Owner: ${graph.outcome.owner ?? "Alex Chen"}`,
+      `Owner: ${owner}`,
       `Constraint: ${compliance?.text ?? graph.outcome.constraint}`,
       `Next step: ${graph.outcome.nextStep}`,
       "",
@@ -62,18 +65,18 @@ export default function PilotSpecPage() {
     <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8">
       <p className="text-sm text-black/48">{graph.session.customerName}</p>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight">What the funded pilot consists of</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-black/58">The six-week funded slice, not a workshop agenda. Heartland’s team would stand this up in their own account.</p>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-black/58">The six-week funded slice, not a workshop agenda. {graph.session.customerName}&apos;s team would stand this up in their own account.</p>
 
       <div className="sticky top-16 z-20 -mx-5 mt-6 border-y border-black/10 bg-white/95 px-5 py-3 backdrop-blur lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={copyBrief} className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]">
+          <Button onClick={copyBrief} className="bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]">
             {briefCopied ? <Check /> : <Clipboard />}{briefCopied ? "Setup brief copied" : "Copy setup brief"}
           </Button>
           <Link href="/telemetry" className={cn(buttonVariants({ variant: "outline" }), "border-black/30 bg-[#f4f4f1] hover:bg-black/[.06]")}>
             View program telemetry <ArrowRight />
           </Link>
           <p className="text-sm text-black/55">
-            The brief goes to Heartland&apos;s build team; they stand the environment up after security review.
+            The brief goes to {graph.session.customerName}&apos;s build team; they stand the environment up after security review.
           </p>
         </div>
       </div>
@@ -84,8 +87,8 @@ export default function PilotSpecPage() {
           <dl className="mt-4 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2">
             {[
               ["Use case", graph.outcome.useCase],
-              ["Owner", graph.outcome.owner ?? "Alex Chen"],
-              ["Constraint", `${compliance?.text ?? graph.outcome.constraint} (Robert Osei, 12 Feb)`],
+              ["Owner", owner],
+              ["Constraint", `${compliance?.text ?? graph.outcome.constraint} (${constraintAttribution})`],
               ["Next step", graph.outcome.nextStep],
               ...(graph.session.reusePriorPilotSpec == null
                 ? []
