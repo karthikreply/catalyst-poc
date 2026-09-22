@@ -8,9 +8,13 @@ import {
   applyDeliveryMode,
   applyFundingRoute,
   applyMechanic,
+  artifactActions,
+  artifactLimitsCopy,
+  artifactPilotScopeCopy,
   claimsArtifactCopy,
   claimsPayoffCopy,
   fundingAskCopy,
+  inputsConfirmedByCopy,
   isQualified,
   isSessionReadOnly,
   pdmPartnerInvitationCopy,
@@ -196,6 +200,63 @@ describe("scope decisions", () => {
     expect(copy.detail).toContain("$4.8M–$9.7M per year");
     expect(copy.status).toBe("Range estimate · spans the library range");
     expect(copy.headline).not.toContain("$7.75M");
+  });
+
+  it("lists each confirmer once on the artifact", () => {
+    expect(inputsConfirmedByCopy(initialSessionGraph)).toBe(
+      "Inputs confirmed by Michelle Dorsey and Dana Reyes.",
+    );
+    expect(inputsConfirmedByCopy(initialSessionGraph)).not.toMatch(/Michelle Dorsey and Michelle Dorsey/);
+  });
+
+  it("names the case's unproven limits so the pilot is the next step", () => {
+    expect(artifactLimitsCopy.heading).toBe("What this case does not yet prove");
+    expect(artifactLimitsCopy.body).toMatch(/handwritten adjuster notes/i);
+    expect(artifactLimitsCopy.body).toMatch(/15%/);
+    expect(artifactLimitsCopy.body).toMatch(/review time/i);
+    expect(artifactLimitsCopy.body).toMatch(/pilot exists to answer these/i);
+  });
+
+  it("carries reuse of the prior pilot spec into the artifact pilot section", () => {
+    expect(artifactPilotScopeCopy(initialSessionGraph, brands.cdw)).toMatch(
+      /reuses CDW's prior document-pattern pilot spec/i,
+    );
+  });
+});
+
+describe("artifact consequences", () => {
+  it("does not assert the $7.75M point estimate when volume is a range", () => {
+    const next = applyClaimsVolumeChoice(initialSessionGraph, "range-250-500");
+    const copy = claimsArtifactCopy(next);
+    expect(copy.headline).toBe("$19,000–$39,000 / day");
+    expect(copy.headline).not.toContain("$31,000");
+    expect(`${copy.headline} ${copy.detail}`).not.toContain("$7.75M");
+  });
+
+  it("labels the artifact unconfirmed when volume was not confirmed", () => {
+    const next = applyClaimsVolumeChoice(initialSessionGraph, "unconfirmed");
+    const copy = claimsArtifactCopy(next);
+    expect(copy.status).toBe("Unconfirmed estimate");
+    expect(copy.headline).toBe("Value pending volume confirmation");
+    expect(`${copy.headline} ${copy.detail} ${copy.status}`).not.toContain("$7.75M");
+  });
+
+  it("switches the artifact cost section to the four-component ledger", () => {
+    const ghost = applyMechanic(initialSessionGraph, "ghost-ledger");
+    expect(ghost.session.mechanic).toBe("ghost-ledger");
+    expect(ghost.costComponents.map((row) => row.label)).toEqual([
+      "Handling labour",
+      "Manual review hours",
+      "Rework and leakage",
+      "Overtime",
+    ]);
+  });
+
+  it("gives the partner a path back to their PDM", () => {
+    expect(artifactActions("partner", false).tertiary).toBe(
+      "Contact my partner manager with this business case",
+    );
+    expect(artifactActions("pdm", false).tertiary).toBeNull();
   });
 
   it("inviting Karen keeps the artifact ask on her and lists her as invited", () => {

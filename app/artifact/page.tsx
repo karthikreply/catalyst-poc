@@ -13,7 +13,14 @@ import { withBrandPeople } from "@/lib/brands";
 import { componentMonthlyTotal, ledgerMonthlyTotal } from "@/lib/cost-model";
 import type { CostComponent } from "@/lib/seed";
 import { formatCurrency, formatPreciseCurrency } from "@/lib/value";
-import { claimsArtifactCopy, fundingAskCopy } from "@/lib/session";
+import {
+  artifactActions,
+  artifactLimitsCopy,
+  artifactPilotScopeCopy,
+  claimsArtifactCopy,
+  fundingAskCopy,
+  inputsConfirmedByCopy,
+} from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 function componentArithmetic(component: CostComponent) {
@@ -48,7 +55,6 @@ export default function ArtifactPage() {
   const [dafOpen, setDafOpen] = useState(false);
   const dafRef = useRef<HTMLElement>(null);
   const claims = graph.valueInputs.find((input) => input.id === "claims")!;
-  const handling = graph.valueInputs.find((input) => input.id === "handling")!;
   const claimsCopy = claimsArtifactCopy(graph);
   const problemQuotes = graph.captures.filter((capture) => ["Michelle Dorsey", "Dana Reyes", "Alex Chen"].includes(capture.attributedTo)).slice(0, 3);
   const compliance = graph.captures.find((capture) => capture.attributedTo === "Robert Osei");
@@ -57,14 +63,7 @@ export default function ArtifactPage() {
   const partial = graph.outcome.partiallyEstimated || graph.costComponents.some((row) => row.confirmedBy === null);
   const qualified = graph.session.qualified;
 
-  const actions = {
-    partner: {
-      primary: "Start DAF funding request",
-      secondary: qualified ? "Request a facilitated session" : "Schedule pilot kickoff",
-    },
-    pdm: { primary: "Review funding request", secondary: "Flag as reference story" },
-    cpm: { primary: "Review funding request", secondary: "Flag as reference story" },
-  }[viewer.actor];
+  const actions = artifactActions(viewer.actor, qualified);
 
   useEffect(() => {
     if (!dafOpen) return;
@@ -121,6 +120,13 @@ export default function ArtifactPage() {
             owner={brand.partnerName}
             explanation={qualified ? "A qualified self-service case can request a facilitated follow-up; this demo does not book it." : "Scheduling the next operational step lives with the partner, not this screen."}
           />
+          {actions.tertiary && (
+            <UnavailableControl
+              label={actions.tertiary}
+              owner={brand.partnerName}
+              explanation="Sends this business case to the partner's assigned vendor PDM. This demo does not send mail."
+            />
+          )}
           <Link href="/pilot-spec" className={cn(buttonVariants({ variant: "outline" }), "ml-auto border-black/30 bg-[#f4f4f1] hover:bg-black/[.06]")}>
             Open pilot spec <ArrowRight />
           </Link>
@@ -211,6 +217,7 @@ export default function ArtifactPage() {
             <h3 className="text-lg font-semibold">What it costs</h3>
             {ghost ? (
               <>
+                <p className="mt-1 text-sm text-black/55">Four-component cost of inaction.</p>
                 <p className="mt-3 text-2xl font-semibold tabular-nums">
                   {graph.session.claimsVolumeChoice === "range-250-500"
                     ? "$4.8M–$9.7M / year"
@@ -259,7 +266,7 @@ export default function ArtifactPage() {
                       : selfService
                     ? "Respondent-confirmed · not facilitator-verified"
                     : claims.confirmedBy
-                      ? `Inputs confirmed by ${claims.confirmedBy} and ${handling.confirmedBy}.`
+                      ? inputsConfirmedByCopy(graph)
                       : "Volume is an unconfirmed estimate from scope."}
                 </p>
               </>
@@ -273,10 +280,15 @@ export default function ArtifactPage() {
           </section>
 
           <section>
+            <h3 className="text-lg font-semibold">{artifactLimitsCopy.heading}</h3>
+            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-black/70">{artifactLimitsCopy.body}</p>
+          </section>
+
+          <section>
             <h3 className="text-lg font-semibold">The proposed pilot</h3>
             <dl className="mt-4 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2">
               {[
-                ["Scope", "AI-assisted extraction from 500 anonymised claims"],
+                ["Scope", artifactPilotScopeCopy(graph, brand)],
                 ["Duration", "Six weeks"],
                 ["Owner", graph.outcome.owner],
                 ["Success", "Process 500 anonymised claims with an audit trail and human review for low-confidence fields"],

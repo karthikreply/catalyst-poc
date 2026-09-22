@@ -146,6 +146,40 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity)} → ${daily}/day · $${millions}M/year · top of the library range`;
 }
 
+export function inputsConfirmedByCopy(graph: SessionGraph) {
+  const names = [...new Set(graph.valueInputs.flatMap((input) => (input.confirmedBy ? [input.confirmedBy] : [])))];
+  if (names.length === 0) return "Volume is an unconfirmed estimate from scope.";
+  if (names.length === 1) return `Inputs confirmed by ${names[0]}.`;
+  if (names.length === 2) return `Inputs confirmed by ${names[0]} and ${names[1]}.`;
+  return `Inputs confirmed by ${names.slice(0, -1).join(", ")}, and ${names.at(-1)}.`;
+}
+
+export const artifactLimitsCopy = {
+  heading: "What this case does not yet prove",
+  body: "Extraction accuracy on Heartland's own forms, including handwritten adjuster notes. Whether the 15% Michelle flagged behaves as her team expects. Actual review time once fields are pre-filled. The pilot exists to answer these.",
+};
+
+export function artifactPilotScopeCopy(graph: SessionGraph, brand: Brand) {
+  const base = "AI-assisted extraction from 500 anonymised claims";
+  if (graph.session.reusePriorPilotSpec === false) return `${base}; starts a fresh pilot spec`;
+  return `${base}; reuses ${brand.partnerName}'s prior document-pattern pilot spec`;
+}
+
+export function artifactActions(actor: Actor, qualified: boolean) {
+  if (actor === "partner") {
+    return {
+      primary: "Start DAF funding request",
+      secondary: qualified ? "Request a facilitated session" : "Schedule pilot kickoff",
+      tertiary: "Contact my partner manager with this business case",
+    };
+  }
+  return {
+    primary: "Review funding request",
+    secondary: "Flag as reference story",
+    tertiary: null,
+  };
+}
+
 export function claimsArtifactCopy(graph: SessionGraph) {
   const claims = graph.valueInputs.find((input) => input.id === "claims");
   const delay = graph.valueInputs.find((input) => input.id === "delay");
