@@ -19,6 +19,7 @@ export type TelemetrySession = {
   mechanic: TelemetryMechanic;
   qualified: boolean;
   converted: boolean;
+  fundingClaimSubmitted: boolean;
   daysToFunded: number | null;
 };
 
@@ -52,20 +53,27 @@ function row(
   mechanic: TelemetryMechanic,
 ): TelemetrySession {
   const outcome: TelemetryOutcome = converted ? "Pilot funded" : qualified ? "Pilot proposed" : "Run";
+  const partnerIndex = index % partners.length;
+  const partnerSequence = Math.floor(index / partners.length);
   return {
     id: `session-${String(index + 1).padStart(3, "0")}`,
-    quarter: quarters[index % quarters.length],
-    partner: partners[index % partners.length],
-    industry: industries[index % industries.length],
-    pattern: patterns[index % patterns.length],
+    quarter: quarters[partnerSequence % quarters.length],
+    partner: partners[partnerIndex],
+    industry: industries[(partnerSequence + partnerIndex) % industries.length],
+    pattern: patterns[(partnerSequence + partnerIndex) % patterns.length],
     outcome,
     fundedValue: converted ? 180_000 + (index % 9) * 55_000 : 0,
     delivery,
     mechanic,
     qualified,
     converted,
+    fundingClaimSubmitted: converted,
     daysToFunded: converted ? 21 + (index % 40) : null,
   };
+}
+
+function evenlySpacedIndexes(indexes: number[], count: number) {
+  return Array.from({ length: count }, (_, position) => indexes[Math.floor((position * indexes.length) / count)]);
 }
 
 export function buildTelemetrySessions(): TelemetrySession[] {
@@ -78,20 +86,64 @@ export function buildTelemetrySessions(): TelemetrySession[] {
   }
   const convertedIndexes = rows.flatMap((item, index) => (item.converted ? [index] : []));
   const unconvertedIndexes = rows.flatMap((item, index) => (!item.converted ? [index] : []));
-  const ghostIndexes = [...convertedIndexes.slice(0, 30), ...unconvertedIndexes.slice(0, 15)];
+  const ghostIndexes = [
+    ...evenlySpacedIndexes(convertedIndexes, 30),
+    ...evenlySpacedIndexes(unconvertedIndexes, 15),
+  ];
   for (const index of ghostIndexes) {
     rows[index] = { ...rows[index], mechanic: "ghost-ledger" };
+  }
+
+  const cdwScoped = rows
+    .flatMap((item, index) => (item.partner === "CDW" && !item.converted && !item.qualified ? [index] : []))
+    .slice(0, 12);
+  for (const index of cdwScoped) {
+    rows[index] = { ...rows[index], outcome: "Scoped" };
+  }
+
+  const cdwSubmitted = rows
+    .flatMap((item, index) => (
+      item.partner === "CDW" &&
+      item.outcome === "Pilot proposed" &&
+      !item.converted
+        ? [index]
+        : []
+    ))
+    .slice(0, 6);
+  for (const index of cdwSubmitted) {
+    rows[index] = { ...rows[index], fundingClaimSubmitted: true };
   }
   return rows;
 }
 
 export function summarizeTelemetry(rows: TelemetrySession[]) {
   return {
+    sessionsScoped: rows.length,
     sessionsRun: rows.filter((item) => item.outcome !== "Scoped").length,
     pilotsProposed: rows.filter((item) => item.outcome === "Pilot proposed" || item.outcome === "Pilot funded").length,
+    fundingClaimsSubmitted: rows.filter((item) => item.fundingClaimSubmitted).length,
     pilotsFunded: rows.filter((item) => item.outcome === "Pilot funded").length,
     fundedPipelineValue: rows.reduce((sum, item) => sum + item.fundedValue, 0),
   };
+}
+
+export function recentTelemetryRows(rows: TelemetrySession[], limit = 8) {
+  const candidates = [...rows].reverse();
+  const selected: TelemetrySession[] = [];
+  const addFirst = (predicate: (row: TelemetrySession) => boolean) => {
+    const match = candidates.find((row) => predicate(row) && !selected.some((item) => item.id === row.id));
+    if (match) selected.push(match);
+  };
+
+  addFirst((row) => row.mechanic === "ghost-ledger");
+  addFirst((row) => row.delivery === "self-service");
+  addFirst((row) => row.qualified && !row.converted);
+  for (const pattern of patterns) addFirst((row) => row.pattern === pattern);
+  for (const row of candidates) {
+    if (selected.length >= limit) break;
+    if (!selected.some((item) => item.id === row.id)) selected.push(row);
+  }
+  return selected.slice(0, limit);
 }
 
 export function scopeTelemetry(

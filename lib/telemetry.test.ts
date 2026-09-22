@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTelemetrySessions, scopeTelemetry, telemetryBenchmarks } from "./telemetry";
+import {
+  buildTelemetrySessions,
+  recentTelemetryRows,
+  scopeTelemetry,
+  summarizeTelemetry,
+  telemetryBenchmarks,
+} from "./telemetry";
 
 describe("telemetryBenchmarks", () => {
   it("exports the pinned rates and counts", () => {
@@ -42,5 +48,38 @@ describe("telemetryBenchmarks", () => {
     expect(scopeTelemetry(rows, { actor: "cpm", partnerName: "SoftwareOne" }).map((item) => item.partner)).toEqual(
       expect.arrayContaining(["CDW", "SoftwareOne", "Insight", "SHI"]),
     );
+  });
+
+  it("gives the CDW cohort credible scope and funding drop-off", () => {
+    const rows = scopeTelemetry(buildTelemetrySessions(), { actor: "partner", partnerName: "CDW" });
+    const summary = summarizeTelemetry(rows);
+
+    expect(rows).toHaveLength(63);
+    expect(summary.sessionsRun).toBe(51);
+    expect(summary.fundingClaimsSubmitted).toBe(34);
+    expect(summary.pilotsFunded).toBe(28);
+    expect(summary.sessionsRun).toBeLessThan(rows.length);
+    expect(summary.pilotsFunded).toBeLessThan(summary.fundingClaimsSubmitted);
+  });
+
+  it("varies partner patterns, mechanics, delivery, outcomes, and quarters", () => {
+    const rows = scopeTelemetry(buildTelemetrySessions(), { actor: "partner", partnerName: "CDW" });
+
+    expect(new Set(rows.map((row) => row.pattern)).size).toBeGreaterThan(1);
+    expect(new Set(rows.map((row) => row.mechanic))).toEqual(new Set(["value-sprint", "ghost-ledger"]));
+    expect(new Set(rows.map((row) => row.delivery))).toEqual(new Set(["facilitated", "self-service"]));
+    expect(new Set(rows.map((row) => row.outcome)).size).toBeGreaterThan(2);
+    expect(new Set(rows.map((row) => row.quarter)).size).toBeGreaterThan(2);
+  });
+
+  it("selects recent rows that demonstrate the cohort instead of repeated filler", () => {
+    const rows = scopeTelemetry(buildTelemetrySessions(), { actor: "partner", partnerName: "CDW" });
+    const recent = recentTelemetryRows(rows, 8);
+
+    expect(recent).toHaveLength(8);
+    expect(recent.some((row) => row.mechanic === "ghost-ledger")).toBe(true);
+    expect(recent.some((row) => row.delivery === "self-service")).toBe(true);
+    expect(recent.some((row) => row.qualified && !row.converted)).toBe(true);
+    expect(new Set(recent.map((row) => row.pattern)).size).toBeGreaterThan(1);
   });
 });

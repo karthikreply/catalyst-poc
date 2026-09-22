@@ -85,9 +85,9 @@ export default function RunPage() {
 
       <div className="grid min-h-[calc(100vh-129px)] md:grid-cols-[180px_1fr]">
         <aside className="border-b border-black/10 bg-white p-4 md:border-b-0 md:border-r">
-          <ol className="grid list-none grid-cols-5 gap-2 md:block md:space-y-1">
+          <div className="grid grid-cols-5 gap-2 md:block md:space-y-1">
             {agenda.map((step) => (
-              <li key={step.id}>
+              <div key={step.id}>
                 <button
                   onClick={() => setActiveStep(step.id)}
                   className={cn(
@@ -104,9 +104,9 @@ export default function RunPage() {
                   </span>
                   <span className="hidden md:block">{step.title}</span>
                 </button>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
         </aside>
 
         <section className="p-5 lg:p-8">

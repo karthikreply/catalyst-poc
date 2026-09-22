@@ -116,16 +116,16 @@ ${people.signoff}`;
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Three-hour agenda</h2>
-          <ol className="mt-5 list-none divide-y divide-black/10 border-y border-black/10">
+          <div className="mt-5 divide-y divide-black/10 border-y border-black/10">
             {agenda.map((step) => (
-              <li key={step.id} className="grid gap-2 py-4 md:grid-cols-[36px_180px_90px_1fr] md:items-start">
+              <div key={step.id} className="grid gap-2 py-4 md:grid-cols-[36px_180px_90px_1fr] md:items-start">
                 <span className="grid size-6 place-items-center rounded-full text-xs font-semibold text-white" style={{ background: brand.accent }}>{step.order}</span>
                 <span className="font-semibold">{step.title}</span>
                 <span className="flex items-center gap-1 text-sm text-black/48"><Clock className="size-3.5" />{step.durationMinutes} min</span>
                 <span className="text-sm leading-6 text-black/62">“{step.prompt}”</span>
-              </li>
+              </div>
             ))}
-          </ol>
+          </div>
           <p className="mt-4 text-xs text-black/45">{pattern.name} typically surfaces a {pattern.typicalValueRange.toLowerCase()}. Source: curated pattern library.</p>
         </section>
 

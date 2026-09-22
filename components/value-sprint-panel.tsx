@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/components/session-provider";
-import { calculateDailyValue, formatCurrency, formatPreciseCurrency } from "@/lib/value";
+import { calculateDailyValue, formatCurrency } from "@/lib/value";
 
 export function ValueSprintPanel() {
   const { graph, updateValue, canEditSession, viewer } = useSession();
@@ -32,6 +32,7 @@ export function ValueSprintPanel() {
                   {selfService ? "Respondent-confirmed · not facilitator-verified" : input.confirmedBy ? `Confirmed by ${input.confirmedBy}` : "Unconfirmed"}
                 </span>
               </span>
+              {" "}
               <span className="flex items-center rounded-sm border border-black/15 bg-white px-2 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--accent)_15%,transparent)]">
                 {input.id === "handling" && <span className="text-black/45">$</span>}
                 <input
