@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Download } from "lucide-react";
 import html2canvas from "html2canvas-pro";
@@ -14,6 +14,7 @@ import { componentMonthlyTotal, ledgerMonthlyTotal } from "@/lib/cost-model";
 import type { CostComponent } from "@/lib/seed";
 import { calculateDailyValue, formatCurrency, formatPreciseCurrency } from "@/lib/value";
 import { fundingAskCopy } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 function componentArithmetic(component: CostComponent) {
   switch (component.id) {
@@ -45,6 +46,7 @@ export default function ArtifactPage() {
   const { graph, brand, viewer } = useSession();
   const people = withBrandPeople(brand);
   const [dafOpen, setDafOpen] = useState(false);
+  const dafRef = useRef<HTMLElement>(null);
   const claims = graph.valueInputs.find((input) => input.id === "claims")!;
   const delay = graph.valueInputs.find((input) => input.id === "delay")!;
   const handling = graph.valueInputs.find((input) => input.id === "handling")!;
@@ -64,6 +66,13 @@ export default function ArtifactPage() {
     pdm: { primary: "Review funding request", secondary: "Flag as reference story" },
     cpm: { primary: "Review funding request", secondary: "Flag as reference story" },
   }[viewer.actor];
+
+  useEffect(() => {
+    if (!dafOpen) return;
+    // Beside the case on wide screens the panel is already in view; only stacked layouts need the scroll.
+    if (window.matchMedia("(min-width: 80rem)").matches) return;
+    dafRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [dafOpen]);
 
   async function downloadPdf() {
     const artifact = document.getElementById("business-case");
@@ -103,7 +112,72 @@ export default function ArtifactPage() {
         <Button onClick={downloadPdf} className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]"><Download /> Download PDF</Button>
       </div>
 
-      <article id="business-case" className="mx-auto max-w-4xl rounded-sm border border-black/10 bg-white">
+      <div className="sticky top-16 z-20 -mx-5 border-y border-black/10 bg-white/95 px-5 py-3 backdrop-blur lg:-mx-8 lg:px-8">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-3">
+          <Button type="button" className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]" onClick={() => setDafOpen((value) => !value)}>
+            {actions.primary}
+          </Button>
+          <UnavailableControl
+            label={actions.secondary}
+            owner={brand.partnerName}
+            explanation={qualified ? "A qualified self-service case can request a facilitated follow-up; this demo does not book it." : "Scheduling the next operational step lives with the partner, not this screen."}
+          />
+          <Link href="/pilot-spec" className={cn(buttonVariants({ variant: "outline" }), "ml-auto border-black/30 bg-[#f4f4f1] hover:bg-black/[.06]")}>
+            Open pilot spec <ArrowRight />
+          </Link>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "mx-auto",
+          dafOpen
+            ? "max-w-4xl xl:grid xl:max-w-[1216px] xl:grid-cols-[56rem_minmax(17rem,1fr)] xl:items-start xl:gap-6 2xl:max-w-[1440px]"
+            : "max-w-4xl",
+        )}
+      >
+      {dafOpen && (
+        <section
+          ref={dafRef}
+          className="mt-5 scroll-mt-36 rounded-sm border border-black/10 bg-white p-5 xl:order-2 xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto"
+        >
+          <p className="text-sm leading-6 text-black/70">
+            {viewer.actor === "partner"
+              ? "Partner development funding is claimed by the partner using the session evidence."
+              : "The partner claims partner development funding against this evidence. The vendor reviews it."}
+          </p>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-1">
+            <div><dt className="text-xs text-black/45">Session</dt><dd>{graph.session.id}</dd></div>
+            <div><dt className="text-xs text-black/45">Customer</dt><dd>{graph.session.customerName}</dd></div>
+            <div><dt className="text-xs text-black/45">Use case</dt><dd>{graph.outcome.useCase}</dd></div>
+            <div><dt className="text-xs text-black/45">Value</dt><dd>{formatCurrency(graph.outcome.annualValue)} / year</dd></div>
+          </dl>
+          <p className="mt-4 text-sm font-medium">Evidence</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black/65">
+            {graph.captures.slice(0, 5).map((capture) => (
+              <li key={capture.id}>{capture.attributedTo}: {capture.text}</li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm">Practice sponsor: {people.sponsorLine}</p>
+          <div className="mt-4">
+            {viewer.actor === "partner" ? (
+              <UnavailableControl
+                label="Submit funding claim"
+                owner={`${brand.partnerName} partner portal`}
+                explanation="Submits to partner portal."
+              />
+            ) : (
+              <UnavailableControl
+                label="Approve funding claim"
+                owner="Platform vendor"
+                explanation="Funding review happens in the partner portal after the partner submits a claim."
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      <article id="business-case" className="mx-auto mt-5 max-w-4xl rounded-sm border border-black/10 bg-white xl:order-1">
         <header className="border-b border-black/10 p-7 md:p-10" style={{ borderTop: `5px solid ${brand.accent}` }}>
           <div className="flex items-center justify-between gap-4">
             <span className="text-base font-black tracking-[-0.08em]" style={{ color: brand.accent }}>{brand.mark}</span>
@@ -197,56 +271,6 @@ export default function ArtifactPage() {
           </section>
         </div>
       </article>
-
-      <div className="mx-auto mt-5 flex max-w-4xl flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {viewer.actor === "partner" ? (
-            <Button type="button" className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]" onClick={() => setDafOpen((value) => !value)}>
-              {actions.primary}
-            </Button>
-          ) : (
-            <UnavailableControl
-              label={actions.primary}
-              owner="Platform vendor"
-              explanation="Funding review happens in the partner portal after a claim is submitted."
-            />
-          )}
-          <UnavailableControl
-            label={actions.secondary}
-            owner={brand.partnerName}
-            explanation={qualified ? "A qualified self-service case can request a facilitated follow-up; this demo does not book it." : "Scheduling the next operational step lives with the partner, not this screen."}
-          />
-        </div>
-
-        {dafOpen && viewer.actor === "partner" && (
-          <section className="rounded-sm border border-black/10 bg-white p-5">
-            <p className="text-sm leading-6 text-black/70">Partner development funding is claimed by the partner using the session evidence.</p>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-xs text-black/45">Session</dt><dd>{graph.session.id}</dd></div>
-              <div><dt className="text-xs text-black/45">Customer</dt><dd>{graph.session.customerName}</dd></div>
-              <div><dt className="text-xs text-black/45">Use case</dt><dd>{graph.outcome.useCase}</dd></div>
-              <div><dt className="text-xs text-black/45">Value</dt><dd>{formatCurrency(graph.outcome.annualValue)} / year</dd></div>
-            </dl>
-            <p className="mt-4 text-sm font-medium">Evidence</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black/65">
-              {graph.captures.slice(0, 5).map((capture) => (
-                <li key={capture.id}>{capture.attributedTo}: {capture.text}</li>
-              ))}
-            </ul>
-            <p className="mt-4 text-sm">Practice sponsor: {people.sponsorLine}</p>
-            <div className="mt-4">
-              <UnavailableControl
-                label="Submit funding claim"
-                owner={`${brand.partnerName} partner portal`}
-                explanation="Submits to partner portal."
-              />
-            </div>
-          </section>
-        )}
-
-        <div className="flex justify-end">
-          <Link href="/pilot-spec" className={buttonVariants({ variant: "outline" })}>Open pilot spec <ArrowRight /></Link>
-        </div>
       </div>
     </div>
   );

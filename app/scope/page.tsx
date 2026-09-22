@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Sparkles, TriangleAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/components/session-provider";
@@ -40,7 +40,6 @@ const coldQuestions = [
 const coldPlaceholder = "Mid-size insurer in Iowa. Claims intake is slow — lots of manual PDF reading.";
 
 export default function ScopePage() {
-  const router = useRouter();
   const {
     brand,
     graph,
@@ -312,9 +311,12 @@ export default function ScopePage() {
                   <p className="mt-2 text-sm leading-6 text-black/55">
                     Volume is on the case, and the funding route is explicit.
                   </p>
-                  <Button onClick={() => router.push("/plan")} className="mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]">
+                  <Link
+                    href="/plan"
+                    className={cn(buttonVariants({ className: "mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]" }))}
+                  >
                     Review session plan <ArrowRight />
-                  </Button>
+                  </Link>
                 </div>
               )}
             </div>
@@ -362,7 +364,7 @@ export default function ScopePage() {
               thinking={thinking}
               canAnswer={canEditSession}
               onChoose={choose}
-              onComplete={() => router.push("/plan")}
+              completeHref="/plan"
             />
           ) : (
             <section className="grid min-h-96 place-items-center rounded-sm border border-black/10 bg-white p-6 text-center">
@@ -420,7 +422,7 @@ function QuestionPanel({
   thinking,
   canAnswer,
   onChoose,
-  onComplete,
+  completeHref,
 }: {
   title: string;
   intro: string;
@@ -431,7 +433,7 @@ function QuestionPanel({
   thinking: boolean;
   canAnswer: boolean;
   onChoose: (answer: string) => void;
-  onComplete: () => void;
+  completeHref: string;
 }) {
   const latestRef = useRef<HTMLDivElement>(null);
 
@@ -486,7 +488,7 @@ function QuestionPanel({
           <div className="rounded-sm border p-4" style={{ borderColor: "var(--accent)" }}>
             <p className="flex items-center gap-2 text-sm font-semibold"><Check className="size-4" style={{ color: "var(--accent)" }} /> Matched pattern: Document-heavy intake</p>
             <p className="mt-2 text-sm leading-6 text-black/55">The room has the right operating, technical, compliance, and funding voices. The plan is ready.</p>
-            <Button onClick={onComplete} className="mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]">Review session plan <ArrowRight /></Button>
+            <Link href={completeHref} className={cn(buttonVariants({ className: "mt-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)]" }))}>Review session plan <ArrowRight /></Link>
           </div>
         )}
         <div ref={latestRef} aria-hidden className="scroll-mt-24" />

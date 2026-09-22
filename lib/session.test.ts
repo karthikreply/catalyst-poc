@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { brands } from "./brands";
 import { initialSessionGraph } from "./seed";
 import {
+  agendaForSession,
   applyClaimsVolumeChoice,
   applyDeliveryMode,
   applyFundingRoute,
@@ -11,6 +12,8 @@ import {
   fundingAskCopy,
   isQualified,
   isSessionReadOnly,
+  pdmPartnerInvitationCopy,
+  preworkForMechanic,
   shouldResetGraph,
   viewerForActor,
 } from "./session";
@@ -63,6 +66,43 @@ describe("applyMechanic", () => {
     expect(ghost.valueInputs).toEqual(edited.valueInputs);
     expect(ghost.costComponents).toEqual(edited.costComponents);
     expect(applyMechanic(ghost, "value-sprint").session.mechanic).toBe("value-sprint");
+  });
+});
+
+describe("plan consequences", () => {
+  it("turns agenda step 2 and pre-work into a ghost ledger plan", () => {
+    const ghost = applyMechanic(initialSessionGraph, "ghost-ledger");
+    const step = agendaForSession(ghost).find((item) => item.id === "volume-and-cost");
+
+    expect(step?.title).toBe("Build the ledger");
+    expect(step?.prompt).toMatch(/tool spend, overtime, rework rate, and review hours/i);
+    expect(preworkForMechanic("ghost-ledger")).toEqual(expect.arrayContaining([
+      expect.stringMatching(/tool spend/i),
+      expect.stringMatching(/overtime/i),
+      expect.stringMatching(/rework rate/i),
+      expect.stringMatching(/review hours/i),
+    ]));
+    expect(preworkForMechanic("value-sprint")).not.toEqual(expect.arrayContaining([
+      expect.stringMatching(/tool spend/i),
+    ]));
+  });
+
+  it("carries the funding route into agenda step 5", () => {
+    const invited = applyFundingRoute(initialSessionGraph, "invite-karen");
+    const delegated = applyFundingRoute(initialSessionGraph, "brief-dana");
+
+    expect(agendaForSession(invited).find((item) => item.id === "owner-and-ask")?.prompt)
+      .toMatch(/asking Karen/i);
+    expect(agendaForSession(delegated).find((item) => item.id === "owner-and-ask")?.prompt)
+      .toMatch(/Dana carry the funding ask/i);
+  });
+
+  it("creates a vendor PDM invitation to the partner", () => {
+    const invitation = pdmPartnerInvitationCopy(brands.cdw);
+
+    expect(invitation).toMatch(/^Hi Ravi,/);
+    expect(invitation).toContain("Heartland Mutual Insurance");
+    expect(invitation).toContain("Priya Raghavan · Platform vendor");
   });
 });
 

@@ -16,7 +16,7 @@ export function UnavailableControl({
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <Button type="button" variant="outline" aria-disabled="true" onClick={() => setOpen((value) => !value)}>
+      <Button type="button" variant="outline" aria-disabled="true" className="border-black/25" onClick={() => setOpen((value) => !value)}>
         {label}
       </Button>
       {open && (

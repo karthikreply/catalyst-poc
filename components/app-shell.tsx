@@ -56,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     >
                       {complete ? <Check className="size-3" /> : index + 1}
                     </span>
-                    {step.label}
+                    <span className="whitespace-nowrap">{step.label}</span>
                   </Link>
                 </div>
               );

@@ -8,14 +8,17 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { UnavailableControl } from "@/components/unavailable-control";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
-import { patterns, prework, type Delivery, type Mechanic } from "@/lib/seed";
+import { patterns, type Delivery, type Mechanic } from "@/lib/seed";
+import { agendaForSession, pdmPartnerInvitationCopy, preworkForMechanic } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export default function PlanPage() {
   const { graph, brand, setDelivery, setMechanic, canEditSession } = useSession();
   const people = withBrandPeople(brand);
-  const [copied, setCopied] = useState<"facilitated" | "self-service" | null>(null);
+  const [copied, setCopied] = useState<"facilitated" | "self-service" | "pdm" | null>(null);
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
+  const agenda = agendaForSession(graph);
+  const sessionPrework = preworkForMechanic(graph.session.mechanic);
 
   const facilitatedEmail = `Hi Dana,
 
@@ -39,8 +42,11 @@ If the numbers hold, we can request a facilitated session next.
 Regards,
 ${people.signoff}`;
 
-  async function copyEmail(kind: "facilitated" | "self-service") {
-    await navigator.clipboard.writeText(kind === "facilitated" ? facilitatedEmail : selfServiceEmail);
+  const pdmEmail = pdmPartnerInvitationCopy(brand);
+
+  async function copyEmail(kind: "facilitated" | "self-service" | "pdm") {
+    const copy = kind === "facilitated" ? facilitatedEmail : kind === "self-service" ? selfServiceEmail : pdmEmail;
+    await navigator.clipboard.writeText(copy);
     setCopied(kind);
     window.setTimeout(() => setCopied(null), 1600);
   }
@@ -52,7 +58,7 @@ ${people.signoff}`;
           <p className="text-sm text-black/48">Heartland Mutual Insurance</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Session plan</h1>
           <p className="mt-2 text-sm text-black/55">
-            Three hours · Tuesday, 9:00 AM · {graph.session.delivery === "self-service" ? "Self-service · no facilitator present" : `Facilitated by Ravi Menon · ${people.facilitatorOrg}`}
+            Three hours · Tuesday, 9:00 AM · {graph.session.delivery === "self-service" ? "Customer self-service · no partner facilitator present" : `Facilitated by Ravi Menon · ${people.facilitatorOrg}`}
           </p>
         </div>
         <Link href="/run" className={buttonVariants({ className: "bg-[var(--accent)] hover:bg-[var(--accent-dark)]" })}>Open live session <ArrowRight /></Link>
@@ -71,7 +77,7 @@ ${people.signoff}`;
               <div className="mt-2 grid gap-2">
                 {([
                   ["facilitated", "Facilitated", "A partner specialist is in the room."],
-                  ["self-service", "Self-service", "Dana confirms the numbers without a facilitator."],
+                  ["self-service", "Customer self-service", "Heartland confirms the numbers without a partner facilitator. This is different from a partner running the session without a PDM."],
                 ] as [Delivery, string, string][]).map(([value, label, hint]) => (
                   <button
                     key={value}
@@ -110,8 +116,8 @@ ${people.signoff}`;
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Three-hour agenda</h2>
-          <ol className="mt-5 divide-y divide-black/10 border-y border-black/10">
-            {graph.agenda.map((step) => (
+          <ol className="mt-5 list-none divide-y divide-black/10 border-y border-black/10">
+            {agenda.map((step) => (
               <li key={step.id} className="grid gap-2 py-4 md:grid-cols-[36px_180px_90px_1fr] md:items-start">
                 <span className="grid size-6 place-items-center rounded-full text-xs font-semibold text-white" style={{ background: brand.accent }}>{step.order}</span>
                 <span className="font-semibold">{step.title}</span>
@@ -141,20 +147,21 @@ ${people.signoff}`;
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Pre-work</h2>
-          <ul className="mt-4 space-y-3">{prework.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 size-4 shrink-0" style={{ color: brand.accent }} />{item}</li>)}</ul>
+          <ul className="mt-4 space-y-3">{sessionPrework.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 size-4 shrink-0" style={{ color: brand.accent }} />{item}</li>)}</ul>
         </section>
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Draft invitation to Dana</h2>
-              <p className="mt-1 text-sm text-black/48">Written in {brand.partnerName}’s voice. Copy either draft; delivery does not rewrite the other.</p>
+              <h2 className="text-lg font-semibold">Invitation drafts</h2>
+              <p className="mt-1 text-sm text-black/48">The customer drafts are in {brand.partnerName}’s voice. The third is the platform PDM inviting the partner to run the session.</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
             {([
               ["facilitated", "Facilitated session", facilitatedEmail],
-              ["self-service", "Self-service walkthrough", selfServiceEmail],
+              ["self-service", "Customer self-service walkthrough", selfServiceEmail],
+              ["pdm", `PDM to ${brand.partnerName}`, pdmEmail],
             ] as const).map(([kind, title, body]) => (
               <div key={kind} className="rounded-sm border border-black/10 p-4">
                 <div className="flex items-center justify-between gap-2">

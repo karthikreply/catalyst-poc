@@ -1,5 +1,5 @@
 import type { Brand } from "./brands";
-import type { Actor, Delivery, Mechanic, SessionGraph } from "./seed";
+import { prework, type Actor, type Delivery, type Mechanic, type SessionGraph } from "./seed";
 import { calculateAnnualValue, calculateDailyValue, formatCurrency, formatPreciseCurrency } from "./value";
 
 export type Viewer = { actor: Actor; name: string; org: string };
@@ -43,6 +43,47 @@ export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): Sess
 
 export function applyMechanic(graph: SessionGraph, mechanic: Mechanic): SessionGraph {
   return { ...graph, session: { ...graph.session, mechanic } };
+}
+
+export function agendaForSession(graph: SessionGraph) {
+  return graph.agenda.map((step) => {
+    if (step.id === "volume-and-cost" && graph.session.mechanic === "ghost-ledger") {
+      return {
+        ...step,
+        title: "Build the ledger",
+        prompt: "What do tool spend, overtime, rework rate, and review hours cost today?",
+      };
+    }
+    if (step.id === "owner-and-ask" && graph.session.fundingRoute === "brief-dana") {
+      return {
+        ...step,
+        prompt: "Who owns this, and can Dana carry the funding ask to Karen?",
+      };
+    }
+    return step;
+  });
+}
+
+export function preworkForMechanic(mechanic: Mechanic) {
+  if (mechanic !== "ghost-ledger") return prework;
+  return [
+    ...prework,
+    "Bring the current tool spend for claims intake.",
+    "Bring recent overtime spend tied to intake volume.",
+    "Estimate the current rework rate.",
+    "Estimate weekly review hours for low-confidence claims.",
+  ];
+}
+
+export function pdmPartnerInvitationCopy(brand: Brand) {
+  return `Hi Ravi,
+
+Heartland Mutual Insurance looks ready for a focused value session. Please bring the customer team together to confirm the claims-intake economics, compliance boundary, and owner for a six-week pilot.
+
+The session can run as a facilitated value sprint or a customer self-service walkthrough. ${brand.partnerName} owns the customer relationship and resulting next step.
+
+Regards,
+Priya Raghavan · Platform vendor`;
 }
 
 export function viewerForActor(actor: Actor, brand: Brand): Viewer {

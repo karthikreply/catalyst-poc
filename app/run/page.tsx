@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useSession } from "@/components/session-provider";
 import { ValueSprintPanel } from "@/components/value-sprint-panel";
 import { withBrandPeople } from "@/lib/brands";
+import { agendaForSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import type { Mechanic } from "@/lib/seed";
 
@@ -21,7 +22,8 @@ const suggestions = [
 export default function RunPage() {
   const { graph, brand, addCapture, setActiveStep, setMechanic, canEditSession, viewer } = useSession();
   const people = withBrandPeople(brand);
-  const activeStep = graph.agenda.find((step) => step.state === "active") ?? graph.agenda[2];
+  const agenda = agendaForSession(graph);
+  const activeStep = agenda.find((step) => step.state === "active") ?? agenda[2];
   const [captureText, setCaptureText] = useState("");
   const [person, setPerson] = useState("Dana Reyes");
   const [suggesting, setSuggesting] = useState(false);
@@ -53,7 +55,7 @@ export default function RunPage() {
         <div>
           <h1 className="text-lg font-semibold">Heartland Mutual · value session</h1>
           <p className="mt-0.5 text-xs text-black/50">
-            {brand.productName} · {selfService ? "Self-service · no facilitator present" : `Facilitated by ${graph.session.facilitator?.name ?? "Ravi Menon"} · ${people.facilitatorOrg}`}
+            {brand.productName} · {selfService ? "Customer self-service · no partner facilitator present" : `Facilitated by ${graph.session.facilitator?.name ?? "Ravi Menon"} · ${people.facilitatorOrg}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -75,7 +77,7 @@ export default function RunPage() {
       </div>
 
       {selfService && (
-        <p className="border-b border-black/10 bg-[#fafaf8] px-5 py-2 text-xs text-black/55 lg:px-8">Self-service — no facilitator present. Output is a qualification-grade business case.</p>
+        <p className="border-b border-black/10 bg-[#fafaf8] px-5 py-2 text-xs text-black/55 lg:px-8">Customer self-service — no partner facilitator present. Output is a qualification-grade business case.</p>
       )}
       {viewer.actor === "cpm" && (
         <p className="border-b border-black/10 bg-[#fafaf8] px-5 py-2 text-xs text-black/55 lg:px-8">Historical session record — the platform vendor sees completed evidence shared by the partner, not live session activity.</p>
@@ -83,8 +85,8 @@ export default function RunPage() {
 
       <div className="grid min-h-[calc(100vh-129px)] md:grid-cols-[180px_1fr]">
         <aside className="border-b border-black/10 bg-white p-4 md:border-b-0 md:border-r">
-          <ol className="grid grid-cols-5 gap-2 md:block md:space-y-1">
-            {graph.agenda.map((step) => (
+          <ol className="grid list-none grid-cols-5 gap-2 md:block md:space-y-1">
+            {agenda.map((step) => (
               <li key={step.id}>
                 <button
                   onClick={() => setActiveStep(step.id)}

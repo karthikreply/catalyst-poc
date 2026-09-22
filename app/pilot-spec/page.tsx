@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Clipboard, Check } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Clipboard } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { UnavailableControl } from "@/components/unavailable-control";
 import { useSession } from "@/components/session-provider";
 import { patterns } from "@/lib/seed";
+import { cn } from "@/lib/utils";
 
 const enableList = `# Enable list — customer cloud account
 # This is a briefing, not a provisioner.
@@ -20,16 +20,17 @@ services:
 `;
 
 const services = [
-  ["Document store", "Holds the 500 anonymised claim packets for the six-week window."],
-  ["Identity", "Names the Heartland owners who can confirm and review extractions."],
-  ["Logging", "Keeps an audit trail for every assisted decision."],
-  ["Review queue", "Routes low-confidence fields to a human, as Robert required."],
-  ["Extraction worker", "Runs the intake extraction against the agreed sample."],
+  ["Document store", "Holds the 500 anonymised claim packets."],
+  ["Identity", "Names who can confirm and review extractions."],
+  ["Logging", "Audit trail for every assisted decision."],
+  ["Review queue", "Low-confidence fields go to a human."],
+  ["Extraction worker", "Runs extraction against the agreed sample."],
 ];
 
 export default function PilotSpecPage() {
   const { graph } = useSession();
   const [copied, setCopied] = useState(false);
+  const [briefCopied, setBriefCopied] = useState(false);
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
   const compliance = graph.captures.find((capture) => capture.attributedTo === "Robert Osei");
 
@@ -39,13 +40,45 @@ export default function PilotSpecPage() {
     window.setTimeout(() => setCopied(false), 1600);
   }
 
+  async function copyBrief() {
+    const brief = [
+      `Pilot setup brief — ${graph.session.customerName}`,
+      `Use case: ${graph.outcome.useCase}`,
+      `Owner: ${graph.outcome.owner ?? "Alex Chen"}`,
+      `Constraint: ${compliance?.text ?? graph.outcome.constraint}`,
+      `Next step: ${graph.outcome.nextStep}`,
+      "",
+      "Requirements:",
+      ...services.map(([name, reason]) => `- ${name}: ${reason}`),
+      "",
+      enableList,
+    ].join("\n");
+    await navigator.clipboard.writeText(brief);
+    setBriefCopied(true);
+    window.setTimeout(() => setBriefCopied(false), 1600);
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8">
       <p className="text-sm text-black/48">{graph.session.customerName}</p>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight">What the funded pilot consists of</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-black/58">The six-week funded slice, not a workshop agenda. Heartland’s team would stand this up in their own account.</p>
 
-      <div className="mt-8 space-y-5">
+      <div className="sticky top-16 z-20 -mx-5 mt-6 border-y border-black/10 bg-white/95 px-5 py-3 backdrop-blur lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={copyBrief} className="bg-[var(--accent)] hover:bg-[var(--accent-dark)]">
+            {briefCopied ? <Check /> : <Clipboard />}{briefCopied ? "Setup brief copied" : "Copy setup brief"}
+          </Button>
+          <Link href="/telemetry" className={cn(buttonVariants({ variant: "outline" }), "border-black/30 bg-[#f4f4f1] hover:bg-black/[.06]")}>
+            View program telemetry <ArrowRight />
+          </Link>
+          <p className="text-sm text-black/55">
+            The brief goes to Heartland&apos;s build team; they stand the environment up after security review.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-5">
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Inherited from the session</h2>
           <dl className="mt-4 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2">
@@ -70,20 +103,32 @@ export default function PilotSpecPage() {
         </section>
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
-          <h2 className="text-lg font-semibold">Environment</h2>
-          <ul className="mt-4 space-y-3">
+          <h2 className="text-lg font-semibold">Reusable pilot setup</h2>
+          <p className="mt-2 text-sm text-black/55">
+            Generated from the {pattern.name.toLowerCase()} pattern and the constraints agreed in the session. The same five requirements apply to every pilot on this pattern.
+          </p>
+          <div className="mt-4 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2">
             {services.map(([name, reason]) => (
-              <li key={name} className="text-sm leading-6"><span className="font-semibold">{name}.</span> {reason}</li>
+              <div key={name} className="bg-white p-4">
+                <p className="text-sm font-semibold">{name}</p>
+                <p className="mt-1 text-sm leading-6 text-black/58">{reason}</p>
+              </div>
             ))}
-          </ul>
+          </div>
           <p className="mt-4 text-sm text-black/58">Data: 500 anonymised claims with handwritten notes redacted from production identifiers.</p>
           <p className="mt-2 text-sm text-black/58">Provisioning happens in the customer&apos;s own cloud account, not here.</p>
-          <div className="mt-4">
-            <div className="mb-2 flex justify-end">
-              <Button variant="outline" size="sm" onClick={copySnippet}>{copied ? <Check /> : <Clipboard />}{copied ? "Copied" : "Copy enable list"}</Button>
+          <details className="group mt-4 border-t border-black/10 pt-4">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold">
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              View technical enable list
+            </summary>
+            <div className="mt-3">
+              <div className="mb-2 flex justify-end">
+                <Button variant="outline" size="sm" onClick={copySnippet}>{copied ? <Check /> : <Clipboard />}{copied ? "Copied" : "Copy enable list"}</Button>
+              </div>
+              <pre className="overflow-x-auto rounded-sm border border-black/10 bg-[#fafaf8] p-4 text-xs leading-6">{enableList}</pre>
             </div>
-            <pre className="overflow-x-auto rounded-sm border border-black/10 bg-[#fafaf8] p-4 text-xs leading-6">{enableList}</pre>
-          </div>
+          </details>
         </section>
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
@@ -95,14 +140,6 @@ export default function PilotSpecPage() {
           </ul>
         </section>
 
-        <section className="flex flex-wrap items-start gap-4 rounded-sm border border-black/10 bg-white p-6">
-          <UnavailableControl label="Provision environment" owner="Heartland Mutual Insurance" explanation="Environment create would run in Heartland’s account after security review." />
-          <UnavailableControl label="Fork repository" owner="Heartland build team" explanation="The starter kit would be handed to the customer's build team." />
-        </section>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <Link href="/telemetry" className={buttonVariants({ variant: "outline" })}>View program telemetry <ArrowRight /></Link>
       </div>
     </div>
   );
