@@ -13,12 +13,14 @@ describe("vendor shell routing", () => {
   });
 
   it("marks only the partner workflow as brand-led", () => {
-    expect(isBrandFlowPath("/scope")).toBe(true);
-    expect(isBrandFlowPath("/artifact")).toBe(true);
-    expect(isBrandFlowPath("/pilot-spec")).toBe(true);
-    expect(isBrandFlowPath("/")).toBe(false);
-    expect(isBrandFlowPath("/funding")).toBe(false);
-    expect(isBrandFlowPath("/telemetry")).toBe(false);
+    expect(isBrandFlowPath("/scope", "partner")).toBe(true);
+    expect(isBrandFlowPath("/artifact", "cpm")).toBe(true);
+    expect(isBrandFlowPath("/pilot-spec", "pdm")).toBe(true);
+    expect(isBrandFlowPath("/", "partner")).toBe(false);
+    expect(isBrandFlowPath("/funding", "partner")).toBe(true);
+    expect(isBrandFlowPath("/funding", "pdm")).toBe(false);
+    expect(isBrandFlowPath("/funding", "cpm")).toBe(false);
+    expect(isBrandFlowPath("/telemetry", "partner")).toBe(false);
   });
 
   it("produces vendor breadcrumbs for dashboard, flow, funding, and telemetry", () => {

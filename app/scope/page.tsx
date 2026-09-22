@@ -15,6 +15,7 @@ import {
 } from "@/lib/seed/accountRecord";
 import {
   claimsPayoffCopy,
+  coldRoleMatch,
   missingColdRoles,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -28,6 +29,15 @@ const claimsChoices: { label: string; value: ClaimsVolumeChoice }[] = [
   { label: "Not confirmed yet", value: "unconfirmed" },
 ];
 
+const roleExamples = [
+  "Operations owner",
+  "Frontline supervisor",
+  "Developer",
+  "Compliance",
+  "Infrastructure",
+  "Economic buyer",
+];
+
 export default function ScopePage() {
   const {
     brand,
@@ -38,6 +48,7 @@ export default function ScopePage() {
     applyPattern,
     applyReusePilot,
     setColdScope,
+    restoreSeededScope,
   } = useSession();
   const mode = graph.session.scopeMode;
   const [adjusting, setAdjusting] = useState<"pattern" | "spec" | null>(null);
@@ -51,12 +62,9 @@ export default function ScopePage() {
   const coldAttendees = graph.coldAttendees.length
     ? graph.coldAttendees
     : Array.from({ length: 3 }, () => ({ name: "", role: "" }));
-  const coldComplete = Boolean(
-    coldCompany.name.trim() &&
-    coldCompany.industry.trim() &&
-    coldCompany.sizeBand.trim() &&
-    coldAttendees.filter((person) => person.name.trim() && person.role.trim()).length >= 3,
-  );
+  const companyComplete = Boolean(coldCompany.name.trim() && coldCompany.industry.trim() && coldCompany.sizeBand.trim());
+  const completeAttendees = coldAttendees.filter((person) => person.name.trim() && person.role.trim());
+  const coldComplete = companyComplete && completeAttendees.length >= 3;
   const coldGaps = missingColdRoles(graph);
 
   function revealNext(target: "funding" | "done") {
@@ -100,11 +108,15 @@ export default function ScopePage() {
             <p className="mt-2 text-xs text-black/45">{crmBadge(brand.partnerName)}</p>
           )}
         </div>
-        {mode === "seeded" && canEditSession && (
+        {mode === "seeded" && canEditSession ? (
           <Button variant="outline" onClick={clearToColdMode}>
             Start without the record
           </Button>
-        )}
+        ) : mode === "cold" && canEditSession ? (
+          <Button variant="outline" onClick={restoreSeededScope}>
+            Use account record instead
+          </Button>
+        ) : null}
       </div>
 
       {mode === "seeded" ? (
@@ -351,6 +363,9 @@ export default function ScopePage() {
               <div>
                 <h2 className="text-lg font-semibold">Who is likely to be in the room?</h2>
                 <p className="mt-1 text-sm text-black/48">Three to six people. The pattern supplies why each role matters.</p>
+                <p className="mt-3 max-w-xl text-xs leading-5 text-black/55">
+                  Recognised role examples: {roleExamples.join(", ")}. Job titles are fine; we match them to these responsibilities.
+                </p>
               </div>
               {coldAttendees.length < 6 && (
                 <Button
@@ -363,9 +378,12 @@ export default function ScopePage() {
                 </Button>
               )}
             </div>
+
             <div className="mt-5 space-y-3">
-              {coldAttendees.map((person, index) => (
-                <div key={index} className="grid gap-3 sm:grid-cols-2">
+              {coldAttendees.map((person, index) => {
+                const matchedRole = coldRoleMatch(person.role);
+                return (
+                <div key={index} className="grid items-start gap-3 sm:grid-cols-2">
                   <Input
                     aria-label={`Attendee ${index + 1} name`}
                     value={person.name}
@@ -376,18 +394,32 @@ export default function ScopePage() {
                       coldAttendees.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row),
                     )}
                   />
-                  <Input
-                    aria-label={`Attendee ${index + 1} role`}
-                    value={person.role}
-                    readOnly={!canEditSession}
-                    placeholder="Role"
-                    onChange={(event) => setColdScope(
-                      coldCompany,
-                      coldAttendees.map((row, rowIndex) => rowIndex === index ? { ...row, role: event.target.value } : row),
+                  <div>
+                    <Input
+                      aria-label={`Attendee ${index + 1} role`}
+                      aria-describedby={person.role.trim() ? `attendee-${index + 1}-role-status` : undefined}
+                      value={person.role}
+                      readOnly={!canEditSession}
+                      placeholder={roleExamples[index] ?? "Role"}
+                      onChange={(event) => setColdScope(
+                        coldCompany,
+                        coldAttendees.map((row, rowIndex) => rowIndex === index ? { ...row, role: event.target.value } : row),
+                      )}
+                    />
+                    {person.role.trim() && (
+                      <p
+                        id={`attendee-${index + 1}-role-status`}
+                        role="status"
+                        aria-live="polite"
+                        className={cn("mt-1 text-xs", matchedRole ? "text-emerald-700" : "text-amber-800")}
+                      >
+                        {matchedRole ? `Matched as ${matchedRole}` : "Not matched to a required pattern role"}
+                      </p>
                     )}
-                  />
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {graph.attendees.length >= 3 && coldGaps.length > 0 && (
@@ -399,12 +431,29 @@ export default function ScopePage() {
               </div>
             )}
 
-            {coldComplete && (
-              <Link href="/plan" className={cn(buttonVariants({ className: "mt-5 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}>
-                Review session plan <ArrowRight />
-              </Link>
-            )}
           </section>
+          <div className="sticky bottom-4 z-10 rounded-sm border border-black/15 bg-white p-4 shadow-lg lg:col-span-2">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="min-w-64 flex-1">
+                <p className="text-sm font-semibold">Next: review the session plan</p>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-black/58">
+                  <p>{companyComplete ? "✓" : "○"} Company details complete</p>
+                  <p>{completeAttendees.length >= 3 ? "✓" : "○"} Three attendees complete ({completeAttendees.length}/3)</p>
+                </div>
+              </div>
+              {coldComplete ? (
+                <Link href="/plan" className={cn(buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}>
+                  Review session plan <ArrowRight />
+                </Link>
+              ) : (
+                <Button type="button" disabled>
+                  {!companyComplete
+                    ? "Complete company details"
+                    : `Add ${3 - completeAttendees.length} more complete ${3 - completeAttendees.length === 1 ? "attendee" : "attendees"}`}
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

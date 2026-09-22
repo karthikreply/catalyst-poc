@@ -1,3 +1,5 @@
+import type { Actor } from "./seed";
+
 export const vendorNavItems = [
   { label: "Dashboard", href: null, illustrative: true },
   { label: "Programs", href: null, illustrative: true },
@@ -15,7 +17,8 @@ const flowLabels: Record<string, string> = {
   "/pilot-spec": "Pilot spec",
 };
 
-export function isBrandFlowPath(pathname: string) {
+export function isBrandFlowPath(pathname: string, actor: Actor) {
+  if (pathname.startsWith("/funding")) return actor === "partner";
   return Object.keys(flowLabels).some((path) => pathname.startsWith(path));
 }
 

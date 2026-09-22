@@ -20,6 +20,7 @@ const steps = [
 
 export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const funding = pathname.startsWith("/funding");
   const activeIndex = Math.max(0, steps.findIndex((step) => pathname.startsWith(step.href)));
   const { brand, brandId, setBrandId } = useSession();
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
@@ -70,7 +71,12 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-semibold">{brand.productName}</span>
           </div>
 
-          <nav aria-label="Value session steps" className="ml-auto hidden items-center md:flex">
+          {funding ? (
+            <div className="ml-auto text-right">
+              <p className="text-xs text-black/45">Business case</p>
+              <p className="text-sm font-semibold">Funding request</p>
+            </div>
+          ) : <nav aria-label="Value session steps" className="ml-auto hidden items-center md:flex">
             {steps.map((step, index) => {
               const active = index === activeIndex;
               const complete = index < activeIndex;
@@ -97,12 +103,14 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
                 </div>
               );
             })}
-          </nav>
+          </nav>}
         </div>
       </header>
       <main>{children}</main>
       <div className="fixed bottom-3 left-1/2 z-40 -translate-x-1/2 md:hidden">
-        <Link href={steps[(activeIndex + 1) % steps.length].href} className={buttonVariants({ size: "sm", className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>Next: {steps[(activeIndex + 1) % steps.length].label}</Link>
+        <Link href={funding ? "/artifact" : steps[(activeIndex + 1) % steps.length].href} className={buttonVariants({ size: "sm", className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>
+          {funding ? "Back to business case" : `Next: ${steps[(activeIndex + 1) % steps.length].label}`}
+        </Link>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Brand } from "./brands";
 import { ledgerAnnualTotal } from "./cost-model";
 import {
+  initialSessionGraph,
   patterns,
   prework,
   type Actor,
@@ -28,6 +29,14 @@ const coldRoleRules = [
 function matchedColdRole(role: string) {
   const normalized = role.toLowerCase();
   return coldRoleRules.find((rule) => rule.matches.some((term) => normalized.includes(term)));
+}
+
+export function coldRoleMatch(role: string) {
+  return matchedColdRole(role)?.role ?? null;
+}
+
+export function restoreSeededGraph(saved: SessionGraph | null) {
+  return saved?.session.scopeMode === "seeded" ? saved : initialSessionGraph;
 }
 
 function patternForIndustry(industry: string) {

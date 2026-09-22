@@ -24,6 +24,7 @@ import {
   applyReusePriorPilotSpec,
   bindAnnualValue,
   isSessionReadOnly,
+  restoreSeededGraph,
   viewerForActor,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -50,6 +51,7 @@ type SessionContextValue = {
   applyReusePilot: (reuse: boolean) => void;
   setCustomerProfile: (profile: { name?: string; context?: string }) => void;
   setColdScope: (company: ColdCompany, attendees: ColdAttendee[]) => void;
+  restoreSeededScope: () => void;
   canEditSession: boolean;
 };
 
@@ -57,6 +59,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 const GRAPH_KEY = "catalyst-session-graph";
 const BRAND_KEY = "catalyst-brand";
 const ACTOR_KEY = "catalyst-viewer-actor";
+const SEEDED_GRAPH_KEY = "catalyst-seeded-graph";
 
 function hydrateGraph(value: SessionGraph | null): SessionGraph {
   if (!value?.session) return initialSessionGraph;
@@ -232,7 +235,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   function setColdScope(company: ColdCompany, attendees: ColdAttendee[]) {
     if (!canEditSession) return;
-    setGraph((current) => applyColdScope(current, company, attendees));
+    setGraph((current) => {
+      if (current.session.scopeMode === "seeded") {
+        localStorage.setItem(SEEDED_GRAPH_KEY, JSON.stringify(current));
+      }
+      return applyColdScope(current, company, attendees);
+    });
+  }
+
+  function restoreSeededScope() {
+    if (!canEditSession) return;
+    const saved = localStorage.getItem(SEEDED_GRAPH_KEY);
+    let parsed: SessionGraph | null = null;
+    if (saved) {
+      try {
+        parsed = JSON.parse(saved) as SessionGraph;
+      } catch {
+        localStorage.removeItem(SEEDED_GRAPH_KEY);
+      }
+    }
+    setGraph(restoreSeededGraph(parsed));
   }
 
   const value = {
@@ -255,6 +277,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     applyReusePilot,
     setCustomerProfile,
     setColdScope,
+    restoreSeededScope,
     canEditSession,
   };
 

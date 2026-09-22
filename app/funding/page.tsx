@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, FileCheck2, LockKeyhole } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileCheck2, LockKeyhole } from "lucide-react";
 
+import { buttonVariants } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
 import { ledgerAnnualTotal } from "@/lib/cost-model";
 import { claimsArtifactCopy } from "@/lib/session";
 import { formatCurrency } from "@/lib/value";
 
-export default function FundingPage() {
+function useFundingData() {
   const { graph, brand, viewer } = useSession();
   const people = withBrandPeople(brand);
   const claims = claimsArtifactCopy(graph);
@@ -24,6 +25,89 @@ export default function FundingPage() {
     : graph.session.claimsVolumeChoice === "range-250-500" && !ghost
       ? "$4.8M–$9.7M / year"
       : `${formatCurrency(annualValue)} / year`;
+
+  return { graph, brand, viewer, people, claims, ghost, value };
+}
+
+export default function FundingPage() {
+  const data = useFundingData();
+  return data.viewer.actor === "partner"
+    ? <PartnerFundingRequest data={data} />
+    : <VendorFundingReview data={data} />;
+}
+
+function PartnerFundingRequest({ data }: { data: ReturnType<typeof useFundingData> }) {
+  const { graph, brand, people, claims, ghost, value } = data;
+
+  return (
+    <div className="mx-auto max-w-5xl px-5 py-8 lg:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-black/48">{brand.partnerName} funding request</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Prepare the DAF claim</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-black/58">Review the evidence carried from the business case before submitting it through the partner portal.</p>
+        </div>
+        <span className="rounded-sm border border-black/15 bg-white px-3 py-2 text-xs font-medium">Draft · not submitted</span>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
+        <section className="overflow-hidden rounded-sm border border-black/10 bg-white">
+          <div className="flex items-center gap-3 border-b border-black/10 bg-[#fafaf8] p-5">
+            <FileCheck2 className="size-5" style={{ color: brand.accent }} />
+            <div>
+              <h2 className="font-semibold">Evidence from the value session</h2>
+              <p className="mt-1 text-xs text-black/45">{graph.session.id}</p>
+            </div>
+          </div>
+          <dl className="grid gap-px bg-black/10 sm:grid-cols-2">
+            {[
+              ["Customer", graph.session.customerName],
+              ["Use case", graph.outcome.useCase],
+              ["Value", value],
+              ["Mechanic", ghost ? "Ghost ledger" : "Value sprint"],
+            ].map(([term, detail]) => (
+              <div key={term} className="bg-white p-5">
+                <dt className="text-xs text-black/45">{term}</dt>
+                <dd className="mt-1 text-sm font-medium">{detail}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="p-5">
+            <h2 className="font-semibold">Attributed evidence</h2>
+            {graph.captures.length ? (
+              <ul className="mt-3 space-y-3">
+                {graph.captures.slice(0, 5).map((capture) => (
+                  <li key={capture.id} className="rounded-sm bg-[#fafaf8] p-4 text-sm leading-6">
+                    <strong>{capture.attributedTo}</strong> — {capture.text}
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-3 text-sm text-black/55">No attributed evidence has been captured yet.</p>}
+            {claims.status && <p className="mt-4 text-sm text-amber-800">{claims.status}</p>}
+          </div>
+        </section>
+
+        <aside className="h-fit rounded-sm border border-black/10 bg-white p-5 shadow-sm">
+          <LockKeyhole className="size-5" style={{ color: brand.accent }} />
+          <h2 className="mt-4 text-lg font-semibold">Partner submission</h2>
+          <p className="mt-2 text-sm leading-6 text-black/58">Practice sponsor: {people.sponsorLine}</p>
+          <button type="button" disabled className="mt-5 h-10 w-full cursor-not-allowed rounded-sm bg-black/35 text-sm font-semibold text-white">
+            Submit funding claim
+          </button>
+          <p className="mt-2 text-xs leading-5 text-black/48">Illustrative only. Production submission happens in {brand.partnerName}&apos;s partner portal.</p>
+        </aside>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link href="/artifact" className={buttonVariants({ variant: "outline" })}><ArrowLeft /> Back to business case</Link>
+        <Link href="/pilot-spec" className={buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>Open pilot spec <ArrowRight /></Link>
+      </div>
+    </div>
+  );
+}
+
+function VendorFundingReview({ data }: { data: ReturnType<typeof useFundingData> }) {
+  const { graph, brand, viewer, people, claims, ghost, value } = data;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">

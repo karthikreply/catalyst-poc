@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { viewer, setActor } = useSession();
   const breadcrumbs = breadcrumbForPath(pathname);
-  const brandFlow = isBrandFlowPath(pathname);
+  const brandFlow = isBrandFlowPath(pathname, viewer.actor);
 
   return (
     <div className="md-shell">

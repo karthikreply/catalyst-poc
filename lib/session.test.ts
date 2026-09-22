@@ -15,6 +15,7 @@ import {
   artifactPilotScopeCopy,
   claimsArtifactCopy,
   claimsPayoffCopy,
+  coldRoleMatch,
   fundingAskCopy,
   inputsConfirmedByCopy,
   missingColdRoles,
@@ -22,6 +23,7 @@ import {
   isSessionReadOnly,
   pdmPartnerInvitationCopy,
   preworkForMechanic,
+  restoreSeededGraph,
   shouldResetGraph,
   viewerForActor,
 } from "./session";
@@ -300,6 +302,21 @@ describe("cold scope", () => {
       expect.objectContaining({ role: "Compliance", reason: expect.stringMatching(/lose two weeks/i) }),
       expect.objectContaining({ role: "Economic buyer", reason: expect.stringMatching(/fund the pilot/i) }),
     ]);
+  });
+
+  it("explains how free-text roles map to required pattern roles", () => {
+    expect(coldRoleMatch("Frontline")).toBe("Frontline supervisor");
+    expect(coldRoleMatch("Analyst")).toBeNull();
+    expect(coldRoleMatch("CFO")).toBe("Economic buyer");
+  });
+
+  it("restores a saved seeded graph and rejects a cold backup", () => {
+    const editedSeeded = applyClaimsVolumeChoice(initialSessionGraph, "range-250-500");
+    const cold = applyColdScope(initialSessionGraph, company, attendees);
+
+    expect(restoreSeededGraph(editedSeeded)).toEqual(editedSeeded);
+    expect(restoreSeededGraph(cold)).toEqual(initialSessionGraph);
+    expect(restoreSeededGraph(null)).toEqual(initialSessionGraph);
   });
 });
 
