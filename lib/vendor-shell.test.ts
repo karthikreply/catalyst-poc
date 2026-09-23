@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { breadcrumbForPath, isBrandFlowPath, vendorNavItems } from "./vendor-shell";
 
 describe("vendor shell routing", () => {
-  it("keeps only value sessions, funding, and telemetry live", () => {
+  it("keeps dashboard, value sessions, funding, and telemetry live", () => {
     expect(vendorNavItems.filter((item) => item.href).map((item) => item.label)).toEqual([
+      "Dashboard",
       "Value sessions",
       "Funding",
       "Telemetry",

@@ -12,9 +12,26 @@ import {
   summarizeTelemetry,
   telemetryBenchmarks,
   telemetrySeed,
+  type TelemetryOutcome,
   type TelemetrySession,
 } from "@/lib/telemetry";
 import { formatCompactCurrency } from "@/lib/value";
+
+const outcomeTone: Record<TelemetryOutcome, string> = {
+  Scoped: "bg-black/6 text-black/62",
+  Run: "bg-sky-100 text-sky-900",
+  "Pilot proposed": "bg-amber-100 text-amber-900",
+  "Pilot funded": "bg-emerald-100 text-emerald-900",
+};
+
+function OutcomeStatus({ outcome }: { outcome: TelemetryOutcome }) {
+  return (
+    <span className={`md-label-medium inline-flex items-center gap-1.5 rounded-[var(--md-sys-shape-full)] px-2 py-1 ${outcomeTone[outcome]}`}>
+      <span aria-hidden className="size-1.5 rounded-full bg-current opacity-70" />
+      {outcome}
+    </span>
+  );
+}
 
 function Breakdown({ title, rows, details }: { title: string; rows: [string, number][]; details?: Record<string, string> }) {
   const max = Math.max(...rows.map(([, value]) => value), 1);
@@ -187,7 +204,7 @@ export default function TelemetryPage() {
                   <td className="px-5 py-4">{row.delivery === "self-service" ? "Self-service" : "Facilitated"}</td>
                   <td className="px-5 py-4">{row.mechanic === "ghost-ledger" ? "Ghost ledger" : "Value sprint"}</td>
                   <td className="px-5 py-4">{row.delivery === "facilitated" ? "—" : row.qualified ? "Qualified" : "Not qualified"}</td>
-                  <td className="px-5 py-4"><span className="md-chip min-h-7 px-2">{row.outcome}</span></td>
+                  <td className="px-5 py-4"><OutcomeStatus outcome={row.outcome} /></td>
                   <td className="px-5 py-4 font-medium">{row.opportunityValue ? formatCompactCurrency(row.opportunityValue) : "—"}</td>
                   <td className="px-5 py-4 text-[var(--md-sys-color-on-surface-variant)]">{row.quarter}</td>
                 </tr>

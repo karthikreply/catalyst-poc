@@ -35,6 +35,15 @@ export function coldRoleMatch(role: string) {
   return matchedColdRole(role)?.role ?? null;
 }
 
+export const coldScopeDefaults: { company: ColdCompany; attendees: ColdAttendee[] } = {
+  company: { name: "Northwind Insurance", industry: "Insurance", sizeBand: "$500M–$1B" },
+  attendees: [
+    { name: "Laura Beckett", role: "VP Claims Operations" },
+    { name: "Sam Ortiz", role: "Claims Supervisor" },
+    { name: "Devin Cole", role: "Senior Developer" },
+  ],
+};
+
 export function restoreSeededGraph(saved: SessionGraph | null) {
   return saved?.session.scopeMode === "seeded" ? saved : initialSessionGraph;
 }

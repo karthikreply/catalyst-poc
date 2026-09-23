@@ -16,6 +16,7 @@ import {
 import {
   claimsPayoffCopy,
   coldRoleMatch,
+  coldScopeDefaults,
   missingColdRoles,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -58,10 +59,8 @@ export default function ScopePage() {
   const claimsChoice = graph.session.claimsVolumeChoice;
   const fundingRoute = graph.session.fundingRoute;
   const seededComplete = Boolean(claimsChoice && fundingRoute);
-  const coldCompany = graph.coldCompany ?? { name: "", industry: "", sizeBand: "" };
-  const coldAttendees = graph.coldAttendees.length
-    ? graph.coldAttendees
-    : Array.from({ length: 3 }, () => ({ name: "", role: "" }));
+  const coldCompany = graph.coldCompany ?? coldScopeDefaults.company;
+  const coldAttendees = graph.coldAttendees.length ? graph.coldAttendees : coldScopeDefaults.attendees;
   const companyComplete = Boolean(coldCompany.name.trim() && coldCompany.industry.trim() && coldCompany.sizeBand.trim());
   const completeAttendees = coldAttendees.filter((person) => person.name.trim() && person.role.trim());
   const coldComplete = companyComplete && completeAttendees.length >= 3;
@@ -86,10 +85,7 @@ export default function ScopePage() {
 
   function clearToColdMode() {
     if (!canEditSession) return;
-    setColdScope(
-      { name: "", industry: "", sizeBand: "" },
-      Array.from({ length: 3 }, () => ({ name: "", role: "" })),
-    );
+    setColdScope(coldScopeDefaults.company, coldScopeDefaults.attendees);
   }
 
   return (
@@ -355,14 +351,14 @@ export default function ScopePage() {
                 />
               </label>
             ))}
-            <p className="mt-4 text-xs leading-5 text-black/48">Industry drives pattern matching. Size stays coarse; exact revenue is not required.</p>
+            <p className="mt-4 text-xs leading-5 text-black/48">Prefilled with an example — select any field and type over it. Industry drives pattern matching. Size stays coarse; exact revenue is not required.</p>
           </section>
 
           <section className="rounded-sm border border-black/10 bg-white p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold">Who is likely to be in the room?</h2>
-                <p className="mt-1 text-sm text-black/48">Three to six people. The pattern supplies why each role matters.</p>
+                <p className="mt-1 text-sm text-black/48">Three to six people, prefilled with an example — type over any name or role. The pattern supplies why each role matters.</p>
                 <p className="mt-3 max-w-xl text-xs leading-5 text-black/55">
                   Recognised role examples: {roleExamples.join(", ")}. Job titles are fine; we match them to these responsibilities.
                 </p>

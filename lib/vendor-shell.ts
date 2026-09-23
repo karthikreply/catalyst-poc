@@ -1,7 +1,7 @@
 import type { Actor } from "./seed";
 
 export const vendorNavItems = [
-  { label: "Dashboard", href: null, illustrative: true },
+  { label: "Dashboard", href: "/", illustrative: false },
   { label: "Programs", href: null, illustrative: true },
   { label: "Value sessions", href: "/scope", illustrative: false },
   { label: "Funding", href: "/funding", illustrative: false },

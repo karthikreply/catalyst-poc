@@ -11,7 +11,7 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
       <p className="md-label-large text-[var(--md-sys-color-primary)]">Program dashboard</p>
-      <h1 className="md-display-small mt-2">Good afternoon, {viewer.name.split(" ")[0]}</h1>
+      <h1 className="md-display-small mt-2">Hello, {viewer.name.split(" ")[0]}</h1>
       <p className="md-body-large mt-3 max-w-2xl text-[var(--md-sys-color-on-surface-variant)]">Launch and govern partner-led value sessions from one neutral program surface.</p>
 
       <section className="md-card-elevated mt-8 grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">

@@ -16,6 +16,7 @@ import {
   claimsArtifactCopy,
   claimsPayoffCopy,
   coldRoleMatch,
+  coldScopeDefaults,
   fundingAskCopy,
   inputsConfirmedByCopy,
   missingColdRoles,
@@ -308,6 +309,27 @@ describe("cold scope", () => {
     expect(coldRoleMatch("Frontline")).toBe("Frontline supervisor");
     expect(coldRoleMatch("Analyst")).toBeNull();
     expect(coldRoleMatch("CFO")).toBe("Economic buyer");
+  });
+
+  it("prefills an editable starting company and three matched attendees", () => {
+    const next = applyColdScope(
+      initialSessionGraph,
+      coldScopeDefaults.company,
+      coldScopeDefaults.attendees,
+    );
+
+    expect(coldScopeDefaults.company.name).toBe("Northwind Insurance");
+    expect(coldScopeDefaults.attendees).toHaveLength(3);
+    expect(coldScopeDefaults.attendees.every((person) => person.name.trim() && person.role.trim())).toBe(true);
+    expect(coldScopeDefaults.attendees.map((person) => coldRoleMatch(person.role))).toEqual([
+      "Operations owner",
+      "Frontline supervisor",
+      "Developer",
+    ]);
+    expect(next.session.customerName).toBe("Northwind Insurance");
+    expect(next.attendees).toHaveLength(3);
+    expect(next.outcome.owner).toBe(coldScopeDefaults.attendees[2].name);
+    expect(next.attendees.some((person) => /Dana Reyes|Karen Whitfield|Alex Chen|Michelle Dorsey/.test(person.name))).toBe(false);
   });
 
   it("restores a saved seeded graph and rejects a cold backup", () => {
