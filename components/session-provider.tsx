@@ -57,11 +57,16 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
-const GRAPH_KEY = "catalyst-session-graph-v2";
+const GRAPH_KEY = "catalyst-session-graph-v3";
 const BRAND_KEY = "catalyst-brand";
 const ACTOR_KEY = "catalyst-viewer-actor";
-const SEEDED_GRAPH_KEY = "catalyst-seeded-graph-v2";
-const SUPERSEDED_KEYS = ["catalyst-session-graph", "catalyst-seeded-graph"];
+const SEEDED_GRAPH_KEY = "catalyst-seeded-graph-v3";
+const SUPERSEDED_KEYS = [
+  "catalyst-session-graph",
+  "catalyst-seeded-graph",
+  "catalyst-session-graph-v2",
+  "catalyst-seeded-graph-v2",
+];
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [graph, setGraph] = useState<SessionGraph>(initialSessionGraph);

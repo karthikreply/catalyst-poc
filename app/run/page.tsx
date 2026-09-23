@@ -9,13 +9,9 @@ import { GhostLedgerPanel } from "@/components/ghost-ledger-panel";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/components/session-provider";
 import { ValueSprintPanel } from "@/components/value-sprint-panel";
+import { nextQuestionSuggestion } from "@/lib/facilitation";
 import { agendaForSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-
-const suggestions = [
-  "A reviewer must be able to see the source field beside every extracted value.",
-  "We can isolate 500 anonymised claims without changing the claims platform.",
-];
 
 export default function RunPage() {
   const { graph, brand, addCapture, setActiveStep, canEditSession, viewer } = useSession();
@@ -25,7 +21,7 @@ export default function RunPage() {
   const [captureText, setCaptureText] = useState("");
   const [person, setPerson] = useState(capturePeople[0] ?? "Participant");
   const [suggesting, setSuggesting] = useState(false);
-  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [suggestion, setSuggestion] = useState<{ stepId: string; text: string } | null>(null);
   const selfService = graph.session.delivery === "self-service";
   const selectedPerson = capturePeople.includes(person) ? person : capturePeople[0] ?? "Participant";
   const capturePerson = selfService ? capturePeople[0] ?? "Respondent" : selectedPerson;
@@ -37,16 +33,15 @@ export default function RunPage() {
     setCaptureText("");
   }
 
-  function suggestFollowUp() {
+  function suggestQuestion() {
     if (!canEditSession) return;
     setSuggesting(true);
     window.setTimeout(() => {
-      const text = suggestions[suggestionIndex % suggestions.length];
-      const attributedTo = graph.session.scopeMode === "cold"
-        ? capturePeople[suggestionIndex % Math.max(capturePeople.length, 1)] ?? capturePerson
-        : suggestionIndex % suggestions.length === 0 ? "Robert Osei" : "Alex Chen";
-      addCapture({ stepId: activeStep.id, attributedTo, text });
-      setSuggestionIndex((index) => index + 1);
+      const previous = suggestion?.stepId === activeStep.id ? suggestion.text : null;
+      setSuggestion({
+        stepId: activeStep.id,
+        text: nextQuestionSuggestion(graph, activeStep.id, previous),
+      });
       setSuggesting(false);
     }, 450);
   }
@@ -90,6 +85,14 @@ export default function RunPage() {
           <div className="mx-auto max-w-5xl">
             <p className="mb-2 text-sm font-medium text-black/45">{activeStep.title} · {activeStep.durationMinutes} min</p>
             <h2 className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-3xl">{activeStep.prompt}</h2>
+            {suggestion?.stepId === activeStep.id && (
+              <aside className="mt-4 max-w-4xl border-l-4 border-[var(--brand-accent)] bg-black/[.035] px-4 py-3" aria-live="polite">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-black/50">
+                  <Lightbulb className="size-4" /> Ask next
+                </p>
+                <p className="mt-1 text-sm leading-6 text-black/75">{suggestion.text}</p>
+              </aside>
+            )}
 
             {graph.session.mechanic === "ghost-ledger" ? <GhostLedgerPanel /> : <ValueSprintPanel />}
 
@@ -131,8 +134,10 @@ export default function RunPage() {
               </div>
             </div>
 
-            <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-5">
-              <Button variant="outline" onClick={suggestFollowUp} disabled={suggesting || !canEditSession}><Lightbulb />{suggesting ? "Thinking…" : "Suggest follow-up"}</Button>
+            <footer className={cn("mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-5", selfService && "justify-end")}>
+              {!selfService && (
+                <Button variant="outline" onClick={suggestQuestion} disabled={suggesting || !canEditSession}><Lightbulb />{suggesting ? "Thinking…" : "Suggest a question to ask"}</Button>
+              )}
               <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>Generate business case <ArrowRight /></Link>
             </footer>
           </div>
