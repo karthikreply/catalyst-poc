@@ -85,13 +85,26 @@ export default function RunPage() {
           <div className="mx-auto max-w-5xl">
             <p className="mb-2 text-sm font-medium text-black/45">{activeStep.title} · {activeStep.durationMinutes} min</p>
             <h2 className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-3xl">{activeStep.prompt}</h2>
-            {suggestion?.stepId === activeStep.id && (
-              <aside className="mt-4 max-w-4xl border-l-4 border-[var(--brand-accent)] bg-black/[.035] px-4 py-3" aria-live="polite">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-black/50">
-                  <Lightbulb className="size-4" /> Ask next
-                </p>
-                <p className="mt-1 text-sm leading-6 text-black/75">{suggestion.text}</p>
-              </aside>
+            {!selfService && (
+              <div className="mt-4 max-w-4xl">
+                {suggestion?.stepId === activeStep.id ? (
+                  <aside className="border-l-4 border-[var(--brand-accent)] bg-black/[.035] px-4 py-3" aria-live="polite">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-black/50">
+                        <Lightbulb className="size-4" /> Ask next
+                      </p>
+                      <Button variant="outline" size="sm" onClick={suggestQuestion} disabled={suggesting || !canEditSession}>
+                        <Lightbulb />{suggesting ? "Thinking…" : "Suggest another"}
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-black/75">{suggestion.text}</p>
+                  </aside>
+                ) : (
+                  <Button variant="outline" onClick={suggestQuestion} disabled={suggesting || !canEditSession}>
+                    <Lightbulb />{suggesting ? "Thinking…" : "Suggest a question to ask"}
+                  </Button>
+                )}
+              </div>
             )}
 
             {graph.session.mechanic === "ghost-ledger" ? <GhostLedgerPanel /> : <ValueSprintPanel />}
@@ -134,10 +147,7 @@ export default function RunPage() {
               </div>
             </div>
 
-            <footer className={cn("mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-5", selfService && "justify-end")}>
-              {!selfService && (
-                <Button variant="outline" onClick={suggestQuestion} disabled={suggesting || !canEditSession}><Lightbulb />{suggesting ? "Thinking…" : "Suggest a question to ask"}</Button>
-              )}
+            <footer className="mt-7 flex flex-wrap items-center justify-end gap-3 border-t border-black/10 pt-5">
               <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>Generate business case <ArrowRight /></Link>
             </footer>
           </div>

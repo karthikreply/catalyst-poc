@@ -67,7 +67,7 @@ function PartnerFundingRequest({ data }: { data: ReturnType<typeof useFundingDat
               ["Customer", graph.session.customerName],
               ["Use case", graph.outcome.useCase || "Not captured"],
               ["Value", value],
-              ["Mechanic", ghost ? "Ghost ledger" : "Value sprint"],
+              ["Format", ghost ? "Ghost ledger" : "Value sprint"],
             ].map(([term, detail]) => (
               <div key={term} className="bg-white p-5">
                 <dt className="text-xs text-black/45">{term}</dt>
@@ -135,8 +135,8 @@ function VendorFundingReview({ data }: { data: ReturnType<typeof useFundingData>
               ["Partner", brand.partnerName],
               ["Use case", graph.outcome.useCase || "Not captured"],
               ["Value", value],
-              ["Mechanic", ghost ? "Ghost ledger" : "Value sprint"],
-              ["Delivery", graph.session.delivery === "self-service" ? "Self-service · unverified estimate" : "Facilitated"],
+              ["Format", ghost ? "Ghost ledger" : "Value sprint"],
+              ["Who ran it", graph.session.delivery === "self-service" ? "Self-service · unverified estimate" : "Facilitated"],
             ].map(([term, detail]) => (
               <div key={term} className="bg-[var(--md-sys-color-surface)] p-5">
                 <dt className="md-label-medium text-[var(--md-sys-color-on-surface-variant)]">{term}</dt>

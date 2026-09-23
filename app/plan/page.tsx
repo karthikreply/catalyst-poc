@@ -80,7 +80,7 @@ ${people.signoff}`;
       </div>
 
       {!canEditSession && (
-        <p className="mt-4 rounded-sm border border-black/10 bg-[#fafaf8] px-4 py-3 text-sm text-black/58">Historical session record. Delivery and mechanic were set by the partner before the session ran.</p>
+        <p className="mt-4 rounded-sm border border-black/10 bg-[#fafaf8] px-4 py-3 text-sm text-black/58">Historical session record. Who ran it and the session format were set by the partner before the session ran.</p>
       )}
 
       <div className="mt-8 space-y-5">
@@ -88,7 +88,7 @@ ${people.signoff}`;
           <h2 className="text-lg font-semibold">How this session runs</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div>
-              <p className="text-xs font-medium text-black/45">Delivery</p>
+              <p className="text-xs font-medium text-black/45">Who runs it</p>
               <div className="mt-2 grid gap-2">
                 {([
                   ["facilitated", "Facilitated", "A partner specialist is in the room."],
@@ -107,7 +107,7 @@ ${people.signoff}`;
               </div>
             </div>
             <div>
-              <p className="text-xs font-medium text-black/45">Mechanic</p>
+              <p className="text-xs font-medium text-black/45">Session format</p>
               <div className="mt-2 grid gap-2">
                 {([
                   ["value-sprint", "Value sprint", "Agree the cost of the problem and commit to a next step."],

@@ -121,7 +121,7 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
 
           {sessionHeader && (
             <label className="flex items-center gap-2">
-              <span className="text-xs font-medium text-black/60">Mechanic</span>
+              <span className="text-xs font-medium text-black/60">Format</span>
               <select
                 value={graph.session.mechanic}
                 disabled={!canEditSession}

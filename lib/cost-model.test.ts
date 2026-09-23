@@ -32,6 +32,18 @@ describe("ghost ledger cost model", () => {
     expect(perSecondRate(annual)).toBeCloseTo(annual / (365 * 24 * 3600), 8);
   });
 
+  it("treats non-finite persisted quantities as zero", () => {
+    const handling = initialSessionGraph.costComponents.find((row) => row.id === "handling")!;
+    const invalid = {
+      ...handling,
+      inputs: handling.inputs.map((input) =>
+        input.label === "Handling cost" ? { ...input, quantity: Number.NaN } : input,
+      ),
+    };
+
+    expect(componentAnnualTotal(invalid)).toBe(0);
+  });
+
   it("freezes the exact annual total that the artifact consumes", () => {
     const frozen = freezeLedger(initialSessionGraph);
     expect(frozen.session.ledgerFrozen).toBe(true);

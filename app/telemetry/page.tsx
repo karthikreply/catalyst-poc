@@ -171,7 +171,7 @@ export default function TelemetryPage() {
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         {viewer.actor !== "partner" && <Breakdown title="Sessions by partner" rows={countBy("partner")} />}
         <Breakdown title={`Sessions by pattern · ${viewer.actor === "partner" ? `${brand.partnerName} cohort n=${rows.length}` : `visible cohort n=${rows.length}`}`} rows={countBy("pattern")} details={patternConversion} />
-        <Breakdown title={`Sessions by mechanic · ${viewer.actor === "partner" ? `${brand.partnerName} cohort n=${rows.length}` : `visible cohort n=${rows.length}`}`} rows={mechanicRows} details={mechanicDetails} />
+        <Breakdown title={`Sessions by format · ${viewer.actor === "partner" ? `${brand.partnerName} cohort n=${rows.length}` : `visible cohort n=${rows.length}`}`} rows={mechanicRows} details={mechanicDetails} />
       </div>
 
       <section className="md-card-outlined mt-5 p-5">
@@ -192,7 +192,7 @@ export default function TelemetryPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="md-body-medium w-full min-w-[980px] text-left">
-            <thead className="md-label-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Delivery</th><th className="px-5 py-3 font-medium">Mechanic</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th>{showOpportunity && <th className="px-5 py-3 font-medium">Opportunity</th>}<th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
+            <thead className="md-label-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Who ran it</th><th className="px-5 py-3 font-medium">Format</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th>{showOpportunity && <th className="px-5 py-3 font-medium">Opportunity</th>}<th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
             <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
               {recent.map((row) => (
                 <tr key={row.id} className={row.id === graph.session.id ? "bg-[var(--md-sys-color-primary-container)]" : "hover:bg-[color-mix(in_srgb,var(--md-sys-color-primary)_5%,transparent)]"}>

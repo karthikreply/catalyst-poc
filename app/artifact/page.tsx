@@ -63,7 +63,7 @@ export default function ArtifactPage() {
   const selfService = graph.session.delivery === "self-service";
   const ghost = graph.session.mechanic === "ghost-ledger";
   const ledgerComplete = hasCompleteCostComponents(graph);
-  const ghostAnnual = graph.session.ledgerFrozen ? graph.outcome.annualValue : ledgerAnnualTotal(graph.costComponents);
+  const ghostAnnual = ledgerAnnualTotal(graph.costComponents);
   const partial = graph.outcome.partiallyEstimated || graph.costComponents.some((row) => row.confirmedBy === null);
   const qualified = graph.session.qualified;
 
