@@ -23,6 +23,7 @@ import {
   applyPatternChoice,
   applyReusePriorPilotSpec,
   bindAnnualValue,
+  graphForActor,
   hydrateSessionGraph,
   isSessionReadOnly,
   restoreSeededGraph,
@@ -83,7 +84,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const frame = requestAnimationFrame(() => {
       if (savedGraph) {
         try {
-          setGraph(hydrateSessionGraph(JSON.parse(savedGraph) as SessionGraph));
+          const savedViewer = savedActor === "pdm" || savedActor === "partner" || savedActor === "cpm"
+            ? savedActor
+            : "partner";
+          setGraph(graphForActor(hydrateSessionGraph(JSON.parse(savedGraph) as SessionGraph), savedViewer));
         } catch {
           localStorage.removeItem(GRAPH_KEY);
         }
@@ -115,6 +119,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   function setActor(next: Actor) {
     setActorState(next);
     sessionStorage.setItem(ACTOR_KEY, next);
+    setGraph((current) => graphForActor(current, next));
   }
 
   function setDelivery(delivery: Delivery) {

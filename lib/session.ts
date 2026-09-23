@@ -48,6 +48,12 @@ export function restoreSeededGraph(saved: SessionGraph | null) {
   return saved?.session.scopeMode === "seeded" ? saved : initialSessionGraph;
 }
 
+export function graphForActor(graph: SessionGraph, actor: Actor) {
+  return actor === "pdm" && graph.session.scopeMode === "cold"
+    ? initialSessionGraph
+    : graph;
+}
+
 function emptyValueInputs(sessionId: string) {
   return initialSessionGraph.valueInputs.map((input) => ({
     ...input,

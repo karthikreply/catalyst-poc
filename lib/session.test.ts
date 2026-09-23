@@ -21,6 +21,7 @@ import {
   coldRoleMatch,
   coldScopeDefaults,
   fundingAskCopy,
+  graphForActor,
   hydrateSessionGraph,
   inputsConfirmedByCopy,
   missingColdRoles,
@@ -479,5 +480,16 @@ describe("scope access", () => {
     expect(canViewPartnerScope("partner")).toBe(true);
     expect(canViewPartnerScope("pdm")).toBe(false);
     expect(canViewPartnerScope("cpm")).toBe(false);
+  });
+
+  it("starts the PDM scenario from clean seeded data after a cold customer", () => {
+    const fujitsu = applyColdScope(
+      initialSessionGraph,
+      { name: "Fujitsu", industry: "Technology", sizeBand: "$1B+" },
+      coldScopeDefaults.attendees,
+    );
+
+    expect(graphForActor(fujitsu, "pdm")).toEqual(initialSessionGraph);
+    expect(graphForActor(fujitsu, "partner")).toBe(fujitsu);
   });
 });

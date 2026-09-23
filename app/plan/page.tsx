@@ -92,7 +92,7 @@ ${people.signoff}`;
               <div className="mt-2 grid gap-2">
                 {([
                   ["facilitated", "Facilitated", "A partner specialist is in the room."],
-                  ["self-service", "Customer self-service", "Heartland confirms the numbers without a partner facilitator. This is different from a partner running the session without a PDM."],
+                  ["self-service", "Customer self-service", `${graph.session.customerName} confirms the numbers without a partner facilitator. This is different from a partner running the session without a PDM.`],
                 ] as [Delivery, string, string][]).map(([value, label, hint]) => (
                   <button
                     key={value}
