@@ -22,6 +22,10 @@ export function isBrandFlowPath(pathname: string, actor: Actor) {
   return Object.keys(flowLabels).some((path) => pathname.startsWith(path));
 }
 
+export function mergesSessionHeader(pathname: string) {
+  return pathname.startsWith("/run");
+}
+
 export function breadcrumbForPath(pathname: string) {
   if (pathname === "/") return ["Partner network", "Dashboard"];
   if (pathname.startsWith("/funding")) return ["Partner network", "Funding"];

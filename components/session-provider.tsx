@@ -23,6 +23,7 @@ import {
   applyPatternChoice,
   applyReusePriorPilotSpec,
   bindAnnualValue,
+  hydrateSessionGraph,
   isSessionReadOnly,
   restoreSeededGraph,
   viewerForActor,
@@ -40,8 +41,8 @@ type SessionContextValue = {
   setActor: (actor: Actor) => void;
   setDelivery: (delivery: Delivery) => void;
   setMechanic: (mechanic: Mechanic) => void;
-  updateValue: (id: string, quantity: number) => void;
-  updateCostInput: (componentId: string, inputLabel: string, quantity: number) => void;
+  updateValue: (id: string, quantity: number | null) => void;
+  updateCostInput: (componentId: string, inputLabel: string, quantity: number | null) => void;
   freezeLedgerNow: () => void;
   addCapture: (capture: Omit<Capture, "id" | "sessionId" | "capturedAt">) => void;
   setActiveStep: (stepId: string) => void;
@@ -56,35 +57,11 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
-const GRAPH_KEY = "catalyst-session-graph";
+const GRAPH_KEY = "catalyst-session-graph-v2";
 const BRAND_KEY = "catalyst-brand";
 const ACTOR_KEY = "catalyst-viewer-actor";
-const SEEDED_GRAPH_KEY = "catalyst-seeded-graph";
-
-function hydrateGraph(value: SessionGraph | null): SessionGraph {
-  if (!value?.session) return initialSessionGraph;
-  return {
-    ...initialSessionGraph,
-    ...value,
-    session: {
-      ...initialSessionGraph.session,
-      ...value.session,
-      reusePriorPilotSpec: value.session.reusePriorPilotSpec ?? true,
-    },
-    valueInputs: value.valueInputs?.length ? value.valueInputs : initialSessionGraph.valueInputs,
-    costComponents: value.costComponents?.length ? value.costComponents : initialSessionGraph.costComponents,
-    agenda: value.agenda?.length ? value.agenda : initialSessionGraph.agenda,
-    captures: value.captures?.length ? value.captures : initialSessionGraph.captures,
-    attendees: value.session.scopeMode === "cold"
-      ? value.attendees ?? []
-      : value.attendees?.length
-        ? value.attendees
-        : initialSessionGraph.attendees,
-    coldCompany: value.coldCompany ?? null,
-    coldAttendees: value.coldAttendees ?? [],
-    outcome: { ...initialSessionGraph.outcome, ...value.outcome },
-  };
-}
+const SEEDED_GRAPH_KEY = "catalyst-seeded-graph-v2";
+const SUPERSEDED_KEYS = ["catalyst-session-graph", "catalyst-seeded-graph"];
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [graph, setGraph] = useState<SessionGraph>(initialSessionGraph);
@@ -94,13 +71,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (hydrated) return;
+    SUPERSEDED_KEYS.forEach((key) => localStorage.removeItem(key));
     const savedGraph = localStorage.getItem(GRAPH_KEY);
     const savedBrand = localStorage.getItem(BRAND_KEY) as BrandId | null;
     const savedActor = sessionStorage.getItem(ACTOR_KEY) as Actor | null;
     const frame = requestAnimationFrame(() => {
       if (savedGraph) {
         try {
-          setGraph(hydrateGraph(JSON.parse(savedGraph) as SessionGraph));
+          setGraph(hydrateSessionGraph(JSON.parse(savedGraph) as SessionGraph));
         } catch {
           localStorage.removeItem(GRAPH_KEY);
         }
@@ -144,8 +122,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setGraph((current) => applyMechanic(current, mechanic));
   }
 
-  function updateValue(id: string, quantity: number) {
-    if (!canEditSession || !Number.isFinite(quantity) || quantity < 0) return;
+  function updateValue(id: string, quantity: number | null) {
+    if (!canEditSession || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0))) return;
     setGraph((current) => {
       const valueInputs = current.valueInputs.map((input) => (input.id === id ? { ...input, quantity } : input));
       const next = { ...current, valueInputs };
@@ -154,8 +132,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
-  function updateCostInput(componentId: string, inputLabel: string, quantity: number) {
-    if (!canEditSession || !Number.isFinite(quantity) || quantity < 0) return;
+  function updateCostInput(componentId: string, inputLabel: string, quantity: number | null) {
+    if (!canEditSession || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0))) return;
     setGraph((current) => ({
       ...current,
       costComponents: current.costComponents.map((component) =>

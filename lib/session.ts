@@ -48,6 +48,80 @@ export function restoreSeededGraph(saved: SessionGraph | null) {
   return saved?.session.scopeMode === "seeded" ? saved : initialSessionGraph;
 }
 
+function emptyValueInputs(sessionId: string) {
+  return initialSessionGraph.valueInputs.map((input) => ({
+    ...input,
+    sessionId,
+    quantity: null,
+    confirmedBy: null,
+    respondentConfirmed: false,
+  }));
+}
+
+function emptyCostComponents() {
+  return initialSessionGraph.costComponents.map((component) => ({
+    ...component,
+    confirmedBy: null,
+    inputs: component.inputs.map((input) => ({ ...input, quantity: null })),
+  }));
+}
+
+export function hydrateSessionGraph(value: SessionGraph | null): SessionGraph {
+  if (!value?.session) return initialSessionGraph;
+  const cold = value.session.scopeMode === "cold";
+  const legacyCold = cold && value.session.id !== "cold-session";
+  const sessionId = cold ? "cold-session" : value.session.id;
+  const agenda = legacyCold
+    ? (value.agenda ?? initialSessionGraph.agenda).map((step, index) => ({
+        ...step,
+        sessionId,
+        state: index === 0 ? "active" as const : "upcoming" as const,
+      }))
+    : value.agenda ?? initialSessionGraph.agenda;
+  const outcome = legacyCold
+    ? {
+        ...initialSessionGraph.outcome,
+        ...value.outcome,
+        sessionId,
+        useCase: "",
+        annualValue: 0,
+        nextStep: "",
+        constraint: "",
+        partiallyEstimated: true,
+      }
+    : { ...initialSessionGraph.outcome, ...value.outcome, sessionId };
+  return {
+    ...initialSessionGraph,
+    ...value,
+    session: {
+      ...initialSessionGraph.session,
+      ...value.session,
+      id: sessionId,
+      reusePriorPilotSpec: value.session.reusePriorPilotSpec ?? (cold ? null : true),
+    },
+    valueInputs: legacyCold
+      ? emptyValueInputs(sessionId)
+      : cold && !value.valueInputs?.length
+        ? emptyValueInputs(sessionId)
+        : value.valueInputs ?? initialSessionGraph.valueInputs,
+    costComponents: legacyCold
+      ? emptyCostComponents()
+      : cold && !value.costComponents?.length
+        ? emptyCostComponents()
+        : value.costComponents ?? initialSessionGraph.costComponents,
+    agenda,
+    captures: legacyCold ? [] : value.captures ?? (cold ? [] : initialSessionGraph.captures),
+    attendees: cold
+      ? value.attendees ?? []
+      : value.attendees?.length
+        ? value.attendees
+        : initialSessionGraph.attendees,
+    coldCompany: value.coldCompany ?? null,
+    coldAttendees: value.coldAttendees ?? [],
+    outcome,
+  };
+}
+
 function patternForIndustry(industry: string) {
   const normalized = industry.toLowerCase();
   if (/(bank|financial|fraud)/.test(normalized)) return "fraud-triage";
@@ -61,31 +135,43 @@ export function applyColdScope(
   company: ColdCompany,
   attendees: ColdAttendee[],
 ): SessionGraph {
+  const enteringCold = graph.session.scopeMode !== "cold";
+  const sessionId = "cold-session";
   return {
     ...graph,
     session: {
       ...graph.session,
+      id: sessionId,
       scopeMode: "cold",
       customerName: company.name,
       customerContext: `${company.sizeBand} ${company.industry}`,
       industry: company.industry,
       patternId: patternForIndustry(company.industry),
+      fundingRoute: enteringCold ? null : graph.session.fundingRoute,
+      claimsVolumeChoice: enteringCold ? null : graph.session.claimsVolumeChoice,
+      reusePriorPilotSpec: enteringCold ? null : graph.session.reusePriorPilotSpec,
+      ledgerFrozen: enteringCold ? false : graph.session.ledgerFrozen,
     },
     coldCompany: company,
     coldAttendees: attendees,
-    captures: [],
-    valueInputs: graph.valueInputs.map((input) => ({
-      ...input,
-      confirmedBy: null,
-      respondentConfirmed: false,
-    })),
-    costComponents: graph.costComponents.map((component) => ({
-      ...component,
-      confirmedBy: null,
-    })),
+    agenda: enteringCold
+      ? graph.agenda.map((step, index) => ({
+          ...step,
+          sessionId,
+          state: index === 0 ? "active" : "upcoming",
+        }))
+      : graph.agenda,
+    captures: enteringCold ? [] : graph.captures,
+    valueInputs: enteringCold ? emptyValueInputs(sessionId) : graph.valueInputs,
+    costComponents: enteringCold ? emptyCostComponents() : graph.costComponents,
     outcome: {
       ...graph.outcome,
+      sessionId,
+      useCase: enteringCold ? "" : graph.outcome.useCase,
+      annualValue: enteringCold ? 0 : graph.outcome.annualValue,
       owner: attendees.find((person) => matchedColdRole(person.role)?.role === "Developer")?.name ?? null,
+      nextStep: enteringCold ? "" : graph.outcome.nextStep,
+      constraint: enteringCold ? "" : graph.outcome.constraint,
       partiallyEstimated: true,
     },
     attendees: attendees.filter((person) => person.name.trim() && person.role.trim()).map((person, index) => {
@@ -126,7 +212,22 @@ export function shouldResetGraph(_pathname: string) {
 }
 
 export function isQualified(graph: SessionGraph) {
-  return graph.valueInputs.every((input) => input.respondentConfirmed) && Boolean(graph.outcome.owner);
+  return hasCompleteValueInputs(graph) && graph.valueInputs.every((input) => input.respondentConfirmed) && Boolean(graph.outcome.owner);
+}
+
+export function hasCompleteValueInputs(graph: SessionGraph) {
+  return ["claims", "delay", "handling"].every((id) => {
+    const quantity = graph.valueInputs.find((input) => input.id === id)?.quantity;
+    return typeof quantity === "number" && Number.isFinite(quantity);
+  });
+}
+
+export function hasCompleteCostComponents(graph: SessionGraph) {
+  return graph.costComponents.length > 0 && graph.costComponents.every((component) =>
+    component.inputs.length > 0 && component.inputs.every((input) =>
+      typeof input.quantity === "number" && Number.isFinite(input.quantity),
+    ),
+  );
 }
 
 export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): SessionGraph {
@@ -180,6 +281,12 @@ export function agendaForSession(graph: SessionGraph) {
         prompt: "Who owns this, and can Dana carry the funding ask to Karen?",
       };
     }
+    if (step.id === "owner-and-ask" && graph.session.scopeMode === "cold") {
+      return {
+        ...step,
+        prompt: "Who owns this, and who can fund the pilot?",
+      };
+    }
     return step;
   });
 }
@@ -220,13 +327,17 @@ export function isSessionReadOnly(actor: Actor) {
   return actor === "cpm";
 }
 
+export function canViewPartnerScope(actor: Actor) {
+  return actor === "partner";
+}
+
 export function bindAnnualValue(graph: SessionGraph): SessionGraph {
   const claims = graph.valueInputs.find((input) => input.id === "claims")?.quantity ?? 0;
   const delay = graph.valueInputs.find((input) => input.id === "delay")?.quantity ?? 0;
   const handling = graph.valueInputs.find((input) => input.id === "handling")?.quantity ?? 0;
   const annualValue = graph.session.mechanic === "ghost-ledger"
-    ? ledgerAnnualTotal(graph.costComponents)
-    : calculateAnnualValue(claims, delay, handling);
+    ? hasCompleteCostComponents(graph) ? ledgerAnnualTotal(graph.costComponents) : 0
+    : hasCompleteValueInputs(graph) ? calculateAnnualValue(claims, delay, handling) : 0;
   return { ...graph, outcome: { ...graph.outcome, annualValue } };
 }
 
@@ -262,16 +373,16 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   const claims = graph.valueInputs.find((input) => input.id === "claims");
   const delay = graph.valueInputs.find((input) => input.id === "delay");
   const handling = graph.valueInputs.find((input) => input.id === "handling");
-  if (!claims || !delay || !handling) return "";
+  if (!claims || !delay || !handling || !hasCompleteValueInputs(graph)) return "";
   if (!claims.confirmedBy) {
     return "Artifact will label this an unconfirmed estimate.";
   }
   if (graph.session.claimsVolumeChoice === "range-250-500") {
     return "250–500 × 2 × $38.75 → $19,000–$39,000/day · $4.8M–$9.7M/year · spans the library range";
   }
-  const daily = formatCurrency(calculateDailyValue(claims.quantity, delay.quantity, handling.quantity));
-  const millions = (calculateAnnualValue(claims.quantity, delay.quantity, handling.quantity) / 1_000_000).toFixed(2).replace(/\.00$/, "");
-  return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity)} → ${daily}/day · $${millions}M/year · top of the library range`;
+  const daily = formatCurrency(calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!));
+  const millions = (calculateAnnualValue(claims.quantity!, delay.quantity!, handling.quantity!) / 1_000_000).toFixed(2).replace(/\.00$/, "");
+  return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} → ${daily}/day · $${millions}M/year · top of the library range`;
 }
 
 export function inputsConfirmedByCopy(graph: SessionGraph) {
@@ -287,7 +398,14 @@ export const artifactLimitsCopy = {
   body: "Extraction accuracy on Heartland's own forms, including handwritten adjuster notes. Whether the 15% Michelle flagged behaves as her team expects. Actual review time once fields are pre-filled. The pilot exists to answer these.",
 };
 
+export function artifactHeadline(useCase: string) {
+  if (!useCase.trim()) return "Business case awaiting session evidence";
+  const sentenceCase = useCase.toLowerCase().replace(/\bai-assisted\b/, "AI-assisted");
+  return `A grounded case for ${sentenceCase}`;
+}
+
 export function artifactPilotScopeCopy(graph: SessionGraph, brand: Brand) {
+  if (graph.session.scopeMode === "cold" && !graph.outcome.nextStep.trim()) return "Not yet defined";
   const base = "AI-assisted extraction from 500 anonymised claims";
   if (graph.session.reusePriorPilotSpec === false) return `${base}; starts a fresh pilot spec`;
   return `${base}; reuses ${brand.partnerName}'s prior document-pattern pilot spec`;
@@ -323,8 +441,12 @@ export function claimsArtifactCopy(graph: SessionGraph) {
   const claims = graph.valueInputs.find((input) => input.id === "claims");
   const delay = graph.valueInputs.find((input) => input.id === "delay");
   const handling = graph.valueInputs.find((input) => input.id === "handling");
-  if (!claims || !delay || !handling) {
-    return { headline: "", detail: "", status: null };
+  if (!claims || !delay || !handling || !hasCompleteValueInputs(graph)) {
+    return {
+      headline: "Value inputs not captured yet",
+      detail: "Add claims volume, avoidable delay, and handling cost during the session before calculating value.",
+      status: null,
+    };
   }
   if (graph.session.claimsVolumeChoice === "unconfirmed") {
     return {
@@ -340,10 +462,10 @@ export function claimsArtifactCopy(graph: SessionGraph) {
       status: "Range estimate · spans the library range",
     };
   }
-  const daily = formatCurrency(calculateDailyValue(claims.quantity, delay.quantity, handling.quantity));
+  const daily = formatCurrency(calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!));
   return {
-    headline: `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity)} = ${daily} / day`,
-    detail: `${claims.quantity} claims per day × ${delay.quantity} avoidable days × ${formatPreciseCurrency(handling.quantity)} handling cost. At 250 working days, that is ${formatCurrency(graph.outcome.annualValue)} per year.`,
+    headline: `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} = ${daily} / day`,
+    detail: `${claims.quantity} claims per day × ${delay.quantity} avoidable days × ${formatPreciseCurrency(handling.quantity!)} handling cost. At 250 working days, that is ${formatCurrency(graph.outcome.annualValue)} per year.`,
     status: null,
   };
 }

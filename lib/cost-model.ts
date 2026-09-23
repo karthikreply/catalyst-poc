@@ -4,7 +4,7 @@ import { calculateDailyValue } from "./value";
 function qty(component: CostComponent, label: string) {
   const input = component.inputs.find((row) => row.label === label);
   if (!input) throw new Error(`${component.id} is missing ${label}`);
-  return input.quantity;
+  return input.quantity ?? 0;
 }
 
 export function componentAnnualTotal(component: CostComponent): number {

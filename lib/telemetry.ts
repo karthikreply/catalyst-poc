@@ -27,6 +27,16 @@ export function canViewOpportunityDetail(actor: Actor, detail: boolean) {
   return actor === "partner" && detail;
 }
 
+export function mechanicConversion(rows: TelemetrySession[], mechanic: TelemetryMechanic) {
+  const visible = rows.filter((row) => row.mechanic === mechanic);
+  const funded = visible.filter((row) => row.converted).length;
+  return {
+    funded,
+    total: visible.length,
+    rate: visible.length ? Math.round((funded / visible.length) * 100) : 0,
+  };
+}
+
 export const telemetryBenchmarks = {
   facilitatedSessions: 150,
   selfServiceSessions: 100,

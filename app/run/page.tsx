@@ -9,10 +9,8 @@ import { GhostLedgerPanel } from "@/components/ghost-ledger-panel";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/components/session-provider";
 import { ValueSprintPanel } from "@/components/value-sprint-panel";
-import { withBrandPeople } from "@/lib/brands";
 import { agendaForSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import type { Mechanic } from "@/lib/seed";
 
 const suggestions = [
   "A reviewer must be able to see the source field beside every extracted value.",
@@ -20,8 +18,7 @@ const suggestions = [
 ];
 
 export default function RunPage() {
-  const { graph, brand, addCapture, setActiveStep, setMechanic, canEditSession, viewer } = useSession();
-  const people = withBrandPeople(brand);
+  const { graph, brand, addCapture, setActiveStep, canEditSession, viewer } = useSession();
   const agenda = agendaForSession(graph);
   const activeStep = agenda.find((step) => step.state === "active") ?? agenda[2];
   const capturePeople = graph.attendees.map((attendee) => attendee.name);
@@ -56,31 +53,6 @@ export default function RunPage() {
 
   return (
     <div className="mx-auto max-w-[1440px]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-white px-5 py-4 lg:px-8">
-        <div>
-          <h1 className="text-lg font-semibold">{graph.session.customerName} · value session</h1>
-          <p className="mt-0.5 text-xs text-black/50">
-            {brand.productName} · {selfService ? "Customer self-service · no partner facilitator present" : `Facilitated by ${graph.session.facilitator?.name ?? "Ravi Menon"} · ${people.facilitatorOrg}`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="flex items-center gap-2 text-xs">
-            <span className="text-black/45">Mechanic</span>
-            <select
-              value={graph.session.mechanic}
-              disabled={!canEditSession}
-              onChange={(event) => setMechanic(event.target.value as Mechanic)}
-              className="h-8 rounded-sm border border-black/15 bg-white px-2 text-xs"
-            >
-              <option value="value-sprint">Value sprint</option>
-              <option value="ghost-ledger">Ghost ledger</option>
-            </select>
-          </label>
-          <span className="font-mono font-semibold tabular-nums">10:42</span>
-          <span className="rounded-sm border border-black/10 bg-[#f7f7f5] px-2.5 py-1 text-xs font-medium">Step {activeStep.order} of 5</span>
-        </div>
-      </div>
-
       {selfService && (
         <p className="border-b border-black/10 bg-[#fafaf8] px-5 py-2 text-xs text-black/55 lg:px-8">Customer self-service — no partner facilitator present. Output is a qualification-grade business case.</p>
       )}
@@ -88,7 +60,7 @@ export default function RunPage() {
         <p className="border-b border-black/10 bg-[#fafaf8] px-5 py-2 text-xs text-black/55 lg:px-8">Historical session record — the platform vendor sees completed evidence shared by the partner, not live session activity.</p>
       )}
 
-      <div className="grid min-h-[calc(100vh-129px)] md:grid-cols-[180px_1fr]">
+      <div className="grid min-h-[calc(100vh-181px)] md:grid-cols-[180px_1fr]">
         <aside className="border-b border-black/10 bg-white p-4 md:border-b-0 md:border-r">
           <div className="grid grid-cols-5 gap-2 md:block md:space-y-1">
             {agenda.map((step) => (
@@ -130,6 +102,9 @@ export default function RunPage() {
                 <span className="text-xs text-black/40">{graph.captures.length} captures</span>
               </div>
               <div className="divide-y divide-black/10 rounded-sm border border-black/10 bg-white">
+                {graph.captures.length === 0 && (
+                  <p className="p-4 text-sm text-black/55">No captures yet. Attribute each note to someone in the room.</p>
+                )}
                 {graph.captures.slice(-5).map((capture) => (
                   <div key={capture.id} className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
                     <p className="text-sm font-semibold">{capture.attributedTo}</p>

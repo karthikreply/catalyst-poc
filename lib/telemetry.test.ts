@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTelemetrySessions,
   canViewOpportunityDetail,
+  mechanicConversion,
   recentTelemetryRows,
   scopeTelemetry,
   summarizeTelemetry,
@@ -78,6 +79,18 @@ describe("telemetryBenchmarks", () => {
     expect(new Set(rows.map((row) => row.delivery))).toEqual(new Set(["facilitated", "self-service"]));
     expect(new Set(rows.map((row) => row.outcome)).size).toBeGreaterThan(2);
     expect(new Set(rows.map((row) => row.quarter)).size).toBeGreaterThan(2);
+  });
+
+  it("computes mechanic conversion from the visible rows", () => {
+    const rows = scopeTelemetry(buildTelemetrySessions(), { actor: "partner", partnerName: "CDW" });
+    const valueSprintRows = rows.filter((row) => row.mechanic === "value-sprint");
+    const funded = valueSprintRows.filter((row) => row.converted).length;
+
+    expect(mechanicConversion(rows, "value-sprint")).toEqual({
+      funded,
+      total: valueSprintRows.length,
+      rate: Math.round((funded / valueSprintRows.length) * 100),
+    });
   });
 
   it("selects recent rows that demonstrate the cohort instead of repeated filler", () => {

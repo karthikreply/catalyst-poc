@@ -6,8 +6,10 @@ import { usePathname } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import { brands } from "@/lib/brands";
+import { brands, withBrandPeople } from "@/lib/brands";
+import type { Mechanic } from "@/lib/seed";
 import { cn } from "@/lib/utils";
+import { mergesSessionHeader } from "@/lib/vendor-shell";
 import { useSession } from "./session-provider";
 
 const steps = [
@@ -22,8 +24,13 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const funding = pathname.startsWith("/funding");
   const activeIndex = Math.max(0, steps.findIndex((step) => pathname.startsWith(step.href)));
-  const { brand, brandId, setBrandId } = useSession();
+  const { brand, brandId, setBrandId, graph, setMechanic, canEditSession } = useSession();
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
+  const sessionHeader = mergesSessionHeader(pathname);
+  const people = withBrandPeople(brand);
+  const facilitation = graph.session.delivery === "self-service"
+    ? "Customer self-service · no partner facilitator present"
+    : `Facilitated by ${graph.session.facilitator?.name ?? "Ravi Menon"} · ${people.facilitatorOrg}`;
 
   return (
     <div
@@ -35,7 +42,7 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
       } as React.CSSProperties}
     >
       <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-5 px-5 lg:px-8">
+        <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-2 px-5 py-2 lg:px-8">
           <div className="relative flex min-w-fit items-center gap-3">
             <button
               type="button"
@@ -68,7 +75,14 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
               </div>
             )}
             <span className="h-5 w-px bg-black/15" />
-            <span className="text-sm font-semibold">{brand.productName}</span>
+            {sessionHeader ? (
+              <div>
+                <h1 className="text-sm font-semibold leading-tight">{graph.session.customerName} · value session</h1>
+                <p className="mt-0.5 text-xs text-black/50">{facilitation}</p>
+              </div>
+            ) : (
+              <span className="text-sm font-semibold">{brand.productName}</span>
+            )}
           </div>
 
           {funding ? (
@@ -104,6 +118,21 @@ export function BrandFlowFrame({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>}
+
+          {sessionHeader && (
+            <label className="flex items-center gap-2">
+              <span className="text-xs font-medium text-black/60">Mechanic</span>
+              <select
+                value={graph.session.mechanic}
+                disabled={!canEditSession}
+                onChange={(event) => setMechanic(event.target.value as Mechanic)}
+                className="h-9 rounded-sm border border-black/25 bg-white px-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-accent)]"
+              >
+                <option value="value-sprint">Value sprint</option>
+                <option value="ghost-ledger">Ghost ledger</option>
+              </select>
+            </label>
+          )}
         </div>
       </header>
       <main>{children}</main>

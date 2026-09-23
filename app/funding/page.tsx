@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
 import { ledgerAnnualTotal } from "@/lib/cost-model";
-import { claimsArtifactCopy } from "@/lib/session";
+import { claimsArtifactCopy, hasCompleteCostComponents, hasCompleteValueInputs } from "@/lib/session";
 import { formatCurrency } from "@/lib/value";
 
 function useFundingData() {
@@ -15,12 +15,15 @@ function useFundingData() {
   const people = withBrandPeople(brand);
   const claims = claimsArtifactCopy(graph);
   const ghost = graph.session.mechanic === "ghost-ledger";
+  const hasValue = ghost ? hasCompleteCostComponents(graph) : hasCompleteValueInputs(graph);
   const annualValue = ghost
     ? graph.session.ledgerFrozen
       ? graph.outcome.annualValue
       : ledgerAnnualTotal(graph.costComponents)
     : graph.outcome.annualValue;
-  const value = graph.session.claimsVolumeChoice === "unconfirmed" && !ghost
+  const value = !hasValue
+    ? "Pending session inputs"
+    : graph.session.claimsVolumeChoice === "unconfirmed" && !ghost
     ? "Pending volume confirmation"
     : graph.session.claimsVolumeChoice === "range-250-500" && !ghost
       ? "$4.8M–$9.7M / year"
@@ -62,7 +65,7 @@ function PartnerFundingRequest({ data }: { data: ReturnType<typeof useFundingDat
           <dl className="grid gap-px bg-black/10 sm:grid-cols-2">
             {[
               ["Customer", graph.session.customerName],
-              ["Use case", graph.outcome.useCase],
+              ["Use case", graph.outcome.useCase || "Not captured"],
               ["Value", value],
               ["Mechanic", ghost ? "Ghost ledger" : "Value sprint"],
             ].map(([term, detail]) => (
@@ -130,7 +133,7 @@ function VendorFundingReview({ data }: { data: ReturnType<typeof useFundingData>
             {[
               ["Customer", graph.session.customerName],
               ["Partner", brand.partnerName],
-              ["Use case", graph.outcome.useCase],
+              ["Use case", graph.outcome.useCase || "Not captured"],
               ["Value", value],
               ["Mechanic", ghost ? "Ghost ledger" : "Value sprint"],
               ["Delivery", graph.session.delivery === "self-service" ? "Self-service · unverified estimate" : "Facilitated"],
@@ -144,13 +147,15 @@ function VendorFundingReview({ data }: { data: ReturnType<typeof useFundingData>
 
           <div className="p-5">
             <h2 className="md-title-medium">Attributed evidence</h2>
-            <ul className="mt-4 space-y-3">
-              {graph.captures.slice(0, 5).map((capture) => (
-                <li key={capture.id} className="md-body-medium rounded-[var(--md-sys-shape-small)] bg-[var(--md-sys-color-surface-container)] p-4">
-                  <strong>{capture.attributedTo}</strong> — {capture.text}
-                </li>
-              ))}
-            </ul>
+            {graph.captures.length ? (
+              <ul className="mt-4 space-y-3">
+                {graph.captures.slice(0, 5).map((capture) => (
+                  <li key={capture.id} className="md-body-medium rounded-[var(--md-sys-shape-small)] bg-[var(--md-sys-color-surface-container)] p-4">
+                    <strong>{capture.attributedTo}</strong> — {capture.text}
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="md-body-medium mt-4 text-[var(--md-sys-color-on-surface-variant)]">No attributed evidence has been captured yet.</p>}
             {claims.status && <p className="md-body-medium mt-4 text-[var(--md-sys-color-on-surface-variant)]">{claims.status}</p>}
           </div>
         </section>

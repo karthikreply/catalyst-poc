@@ -59,7 +59,7 @@ export type ValueInput = {
   id: string;
   sessionId: string;
   label: string;
-  quantity: number;
+  quantity: number | null;
   unit: string;
   confirmedBy: string | null;
   respondentConfirmed: boolean;
@@ -88,7 +88,7 @@ export type Attendee = {
 export type CostComponent = {
   id: string;
   label: string;
-  inputs: { label: string; quantity: number; unit: string }[];
+  inputs: { label: string; quantity: number | null; unit: string }[];
   confirmedBy: string | null;
 };
 

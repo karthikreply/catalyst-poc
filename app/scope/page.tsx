@@ -14,6 +14,7 @@ import {
   prmBadge,
 } from "@/lib/seed/accountRecord";
 import {
+  canViewPartnerScope,
   claimsPayoffCopy,
   coldRoleMatch,
   coldScopeDefaults,
@@ -43,6 +44,7 @@ export default function ScopePage() {
   const {
     brand,
     graph,
+    viewer,
     canEditSession,
     applyClaimsChoice,
     applyFunding,
@@ -86,6 +88,46 @@ export default function ScopePage() {
   function clearToColdMode() {
     if (!canEditSession) return;
     setColdScope(coldScopeDefaults.company, coldScopeDefaults.attendees);
+  }
+
+  if (!canViewPartnerScope(viewer.actor)) {
+    const patternName = graph.session.patternId === "fraud-triage"
+      ? "Fraud triage"
+      : graph.session.patternId === "contact-centre-summarisation"
+        ? "Contact-centre summarisation"
+        : graph.session.patternId === "knowledge-retrieval"
+          ? "Knowledge retrieval"
+          : "Document-heavy intake";
+
+    return (
+      <div className="mx-auto max-w-5xl px-5 py-8 lg:px-8">
+        <p className="text-sm text-black/48">Read-only vendor view</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Scope the value session</h1>
+        <p className="mt-5 rounded-sm border border-black/10 bg-[#fafaf8] px-5 py-4 text-sm leading-6 text-black/65">
+          Account record is partner-held. The vendor sees the session outcome, not the CRM.
+        </p>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <section className="rounded-sm border border-black/10 bg-white p-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-semibold">Matched pattern</h2>
+              <span className="text-[11px] text-black/42">Curated library</span>
+            </div>
+            <p className="mt-3 text-lg font-semibold">{patternName}</p>
+          </section>
+
+          <section className="rounded-sm border border-black/10 bg-white p-6">
+            <h2 className="font-semibold">Session outcome</h2>
+            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+              <div><dt className="text-xs text-black/45">Use case</dt><dd className="mt-1 font-medium">{graph.outcome.useCase || "Not captured"}</dd></div>
+              <div><dt className="text-xs text-black/45">Annual value</dt><dd className="mt-1 font-medium">{graph.outcome.annualValue ? formatCompactCurrency(graph.outcome.annualValue) : "Pending session inputs"}</dd></div>
+              <div><dt className="text-xs text-black/45">Owner</dt><dd className="mt-1 font-medium">{graph.outcome.owner ?? "Not confirmed"}</dd></div>
+              <div><dt className="text-xs text-black/45">Next step</dt><dd className="mt-1 font-medium">{graph.outcome.nextStep || "Not captured"}</dd></div>
+            </dl>
+          </section>
+        </div>
+      </div>
+    );
   }
 
   return (

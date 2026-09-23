@@ -6,12 +6,14 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/components/session-provider";
+import { patterns } from "@/lib/seed";
+import { hasCompleteCostComponents, hasCompleteValueInputs } from "@/lib/session";
 import {
   canViewOpportunityDetail,
+  mechanicConversion,
   recentTelemetryRows,
   scopeTelemetry,
   summarizeTelemetry,
-  telemetryBenchmarks,
   telemetrySeed,
   type TelemetryOutcome,
   type TelemetrySession,
@@ -61,15 +63,19 @@ export default function TelemetryPage() {
       actor: viewer.actor,
       partnerName: brand.partnerName,
     });
+    const hasSessionValue = graph.session.mechanic === "ghost-ledger"
+      ? hasCompleteCostComponents(graph)
+      : hasCompleteValueInputs(graph);
+    const pattern = patterns.find((item) => item.id === graph.session.patternId)?.name ?? "Pattern not selected";
     const overlay: TelemetrySession = {
       id: graph.session.id,
       quarter: "Q3 2026",
       partner: brand.partnerName as TelemetrySession["partner"],
       industry: graph.session.industry,
-      pattern: "Document-heavy intake",
-      outcome: "Pilot proposed",
+      pattern,
+      outcome: graph.session.scopeMode === "cold" && !hasSessionValue ? "Scoped" : "Pilot proposed",
       fundedValue: 0,
-      opportunityValue: graph.outcome.annualValue,
+      opportunityValue: hasSessionValue ? graph.outcome.annualValue : undefined,
       customer: graph.session.customerName,
       delivery: graph.session.delivery,
       mechanic: graph.session.mechanic,
@@ -100,13 +106,11 @@ export default function TelemetryPage() {
     ["Value sprint", rows.filter((row) => row.mechanic === "value-sprint").length],
     ["Ghost ledger", rows.filter((row) => row.mechanic === "ghost-ledger").length],
   ];
+  const valueSprintConversion = mechanicConversion(rows, "value-sprint");
+  const ghostLedgerConversion = mechanicConversion(rows, "ghost-ledger");
   const mechanicDetails = {
-    "Value sprint": viewer.actor === "partner"
-      ? `${rows.filter((row) => row.mechanic === "value-sprint" && row.converted).length} funded · cohort n=${mechanicRows[0][1]}`
-      : `${telemetryBenchmarks.valueSprintConversionRate}% program conversion · benchmark n=${telemetryBenchmarks.valueSprintSessions}`,
-    "Ghost ledger": viewer.actor === "partner"
-      ? `${rows.filter((row) => row.mechanic === "ghost-ledger" && row.converted).length} funded · cohort n=${mechanicRows[1][1]}`
-      : `${telemetryBenchmarks.ghostLedgerConversionRate}% program conversion · benchmark n=${telemetryBenchmarks.ghostLedgerSessions}`,
+    "Value sprint": `${valueSprintConversion.funded} funded of ${valueSprintConversion.total} · ${valueSprintConversion.rate}% conversion`,
+    "Ghost ledger": `${ghostLedgerConversion.funded} funded of ${ghostLedgerConversion.total} · ${ghostLedgerConversion.rate}% conversion`,
   };
   const overlayRow = rows.find((row) => row.id === graph.session.id);
   const recent = [
@@ -130,7 +134,9 @@ export default function TelemetryPage() {
           <p className="md-body-medium mt-2 text-[var(--md-sys-color-on-surface-variant)]">
             {viewer.actor === "partner"
               ? `${brand.partnerName} cohort · ${rows.length} scoped sessions over eight quarters · live Heartland overlay included`
-              : `Program cohort · 250 historical sessions over eight quarters · live Heartland overlay shown separately`}
+              : viewer.actor === "pdm"
+                ? `My partners' cohort · ${rows.length} scoped sessions over eight quarters · live Heartland overlay shown separately`
+                : `Program cohort · ${rows.length} scoped sessions over eight quarters · live Heartland overlay shown separately`}
           </p>
         </div>
         <div className="md-card-outlined w-full max-w-lg p-4">
@@ -161,15 +167,6 @@ export default function TelemetryPage() {
           <div key={label} className="md-card-elevated p-5"><p className="md-label-medium text-[var(--md-sys-color-on-surface-variant)]">{label}</p><p className="md-headline-medium mt-2">{value}</p></div>
         ))}
       </div>
-
-      {viewer.actor !== "partner" && (
-        <section className="md-card-outlined mt-5 p-5">
-          <h2 className="md-title-medium">Program benchmark cohort · n=250</h2>
-          <p className="md-body-medium mt-3 text-[var(--md-sys-color-on-surface-variant)]">
-            Facilitated {telemetryBenchmarks.facilitatedConversionRate}% · self-service {telemetryBenchmarks.selfServiceConversionRate}% · self-service qualified {telemetryBenchmarks.selfServiceQualificationRate}% · value sprint {telemetryBenchmarks.valueSprintConversionRate}% · ghost ledger {telemetryBenchmarks.ghostLedgerConversionRate}%.
-          </p>
-        </section>
-      )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         {viewer.actor !== "partner" && <Breakdown title="Sessions by partner" rows={countBy("partner")} />}

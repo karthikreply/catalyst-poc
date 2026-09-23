@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { breadcrumbForPath, isBrandFlowPath, vendorNavItems } from "./vendor-shell";
+import { breadcrumbForPath, isBrandFlowPath, mergesSessionHeader, vendorNavItems } from "./vendor-shell";
 
 describe("vendor shell routing", () => {
   it("keeps dashboard, value sessions, funding, and telemetry live", () => {
@@ -22,6 +22,14 @@ describe("vendor shell routing", () => {
     expect(isBrandFlowPath("/funding", "pdm")).toBe(false);
     expect(isBrandFlowPath("/funding", "cpm")).toBe(false);
     expect(isBrandFlowPath("/telemetry", "partner")).toBe(false);
+  });
+
+  it("merges the session header into the brand band on run only", () => {
+    expect(mergesSessionHeader("/run")).toBe(true);
+    expect(mergesSessionHeader("/plan")).toBe(false);
+    expect(mergesSessionHeader("/scope")).toBe(false);
+    expect(mergesSessionHeader("/artifact")).toBe(false);
+    expect(mergesSessionHeader("/funding")).toBe(false);
   });
 
   it("produces vendor breadcrumbs for dashboard, flow, funding, and telemetry", () => {

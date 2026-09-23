@@ -14,34 +14,33 @@ import type { CostComponent } from "@/lib/seed";
 import { formatCurrency, formatPreciseCurrency } from "@/lib/value";
 import {
   artifactActions,
+  artifactHeadline,
   artifactLimitsCopy,
   artifactPilotScopeCopy,
   claimsArtifactCopy,
   fundingAskCopy,
+  hasCompleteCostComponents,
   inputsConfirmedByCopy,
 } from "@/lib/session";
 
 function componentArithmetic(component: CostComponent) {
+  if (component.inputs.some((input) => input.quantity === null)) return "Inputs not captured";
+  const quantities = component.inputs.map((input) => input.quantity as number);
   switch (component.id) {
     case "handling": {
-      const claims = component.inputs[0].quantity;
-      const delay = component.inputs[1].quantity;
-      const cost = component.inputs[2].quantity;
+      const [claims, delay, cost] = quantities;
       return `${claims} × ${delay} × ${formatPreciseCurrency(cost)} × 250 ÷ 12 = ${formatCurrency(componentMonthlyTotal(component))} / month`;
     }
     case "review": {
-      const hours = component.inputs[0].quantity;
-      const rate = component.inputs[1].quantity;
+      const [hours, rate] = quantities;
       return `${hours} × 50 × ${formatPreciseCurrency(rate)} ÷ 12 = ${formatCurrency(componentMonthlyTotal(component))} / month`;
     }
     case "rework": {
-      const claims = component.inputs[0].quantity;
-      const reopen = component.inputs[1].quantity;
-      const each = component.inputs[2].quantity;
+      const [claims, reopen, each] = quantities;
       return `${claims} × 250 × ${reopen} × ${formatCurrency(each)} ÷ 12 = ${formatCurrency(componentMonthlyTotal(component))} / month`;
     }
     case "overtime":
-      return `${formatCurrency(component.inputs[0].quantity)} / month`;
+      return `${formatCurrency(quantities[0])} / month`;
     default:
       return formatCurrency(componentMonthlyTotal(component));
   }
@@ -63,6 +62,7 @@ export default function ArtifactPage() {
   );
   const selfService = graph.session.delivery === "self-service";
   const ghost = graph.session.mechanic === "ghost-ledger";
+  const ledgerComplete = hasCompleteCostComponents(graph);
   const ghostAnnual = graph.session.ledgerFrozen ? graph.outcome.annualValue : ledgerAnnualTotal(graph.costComponents);
   const partial = graph.outcome.partiallyEstimated || graph.costComponents.some((row) => row.confirmedBy === null);
   const qualified = graph.session.qualified;
@@ -152,7 +152,7 @@ export default function ArtifactPage() {
             <span className="text-base font-black tracking-[-0.08em]" style={{ color: brand.accent }}>{brand.mark}</span>
             <span className="text-xs text-black/45">{brand.productName}</span>
           </div>
-          <h2 className="mt-12 text-3xl font-semibold tracking-tight">A grounded case for {graph.outcome.useCase.toLowerCase()}</h2>
+          <h2 className="mt-12 text-3xl font-semibold tracking-tight">{artifactHeadline(graph.outcome.useCase)}</h2>
           <p className="mt-3 text-base text-black/58">{brand.artifactIntro.replace("Heartland Mutual Insurance", graph.session.customerName)}</p>
         </header>
 
@@ -172,7 +172,7 @@ export default function ArtifactPage() {
           <section className="rounded-sm border border-black/10 bg-[#fafaf8] p-5">
             <h3 className="text-lg font-semibold">What it costs</h3>
             {ghost ? (
-              <>
+              ledgerComplete ? <>
                 <p className="mt-1 text-sm text-black/55">Four-component cost of inaction.</p>
                 <p className="mt-3 text-2xl font-semibold tabular-nums">
                   {formatCurrency(ghostAnnual)} / year
@@ -206,7 +206,12 @@ export default function ArtifactPage() {
                     Monthly total {formatCurrency(ledgerMonthlyTotal(graph.costComponents))}. At twelve months, {formatCurrency(ghostAnnual)} per year.
                   </p>
                 )}
-              </>
+              </> : (
+                <div className="mt-3">
+                  <p className="text-xl font-semibold">Ledger inputs not captured yet</p>
+                  <p className="mt-2 text-sm leading-6 text-black/58">Complete the ledger during the session before calculating a cost of inaction.</p>
+                </div>
+              )
             ) : (
               <>
                 <p className="mt-3 text-2xl font-semibold tabular-nums">{claimsCopy.headline}</p>
@@ -230,8 +235,14 @@ export default function ArtifactPage() {
 
           <section>
             <h3 className="text-lg font-semibold">The agreed constraint</h3>
-            <p className="mt-3 leading-7">“{compliance?.text ?? graph.outcome.constraint}” <span className="text-black/48">— {compliancePerson ? `${compliancePerson.name}, ${compliancePerson.role}` : "Confirmer needed"}</span></p>
-            <p className="mt-2 text-sm text-black/58">The pilot keeps human review on low-confidence extractions.</p>
+            {(compliance?.text ?? graph.outcome.constraint) ? (
+              <>
+                <p className="mt-3 leading-7">“{compliance?.text ?? graph.outcome.constraint}” <span className="text-black/48">— {compliancePerson ? `${compliancePerson.name}, ${compliancePerson.role}` : "Confirmer needed"}</span></p>
+                <p className="mt-2 text-sm text-black/58">The pilot keeps human review on low-confidence extractions.</p>
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-black/55">No constraint has been captured for this session yet.</p>
+            )}
           </section>
 
           <section>
@@ -249,7 +260,7 @@ export default function ArtifactPage() {
               {[
                 ["Scope", artifactPilotScopeCopy(graph, brand)],
                 ["Duration", "Six weeks"],
-                ["Owner", graph.outcome.owner],
+                ["Owner", graph.outcome.owner ?? "Not confirmed"],
                 ["Success", "Process 500 anonymised claims with an audit trail and human review for low-confidence fields"],
               ].map(([term, detail]) => (
                 <div key={term} className="bg-white p-4"><dt className="text-xs font-medium text-black/45">{term}</dt><dd className="mt-1 text-sm leading-6">{detail}</dd></div>

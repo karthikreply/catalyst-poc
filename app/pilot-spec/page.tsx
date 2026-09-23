@@ -38,6 +38,9 @@ export default function PilotSpecPage() {
   const compliance = graph.captures.find((capture) => capture.attributedTo === compliancePerson?.name);
   const owner = graph.outcome.owner ?? "Owner not yet confirmed";
   const constraintAttribution = compliancePerson ? `${compliancePerson.name}, ${compliancePerson.role}` : "Confirmer needed";
+  const useCase = graph.outcome.useCase || "Not captured";
+  const constraint = (compliance?.text ?? graph.outcome.constraint) || "Not captured";
+  const nextStep = graph.outcome.nextStep || "Not captured";
 
   async function copySnippet() {
     await navigator.clipboard.writeText(enableList);
@@ -48,10 +51,10 @@ export default function PilotSpecPage() {
   async function copyBrief() {
     const brief = [
       `Pilot setup brief — ${graph.session.customerName}`,
-      `Use case: ${graph.outcome.useCase}`,
+      `Use case: ${useCase}`,
       `Owner: ${owner}`,
-      `Constraint: ${compliance?.text ?? graph.outcome.constraint}`,
-      `Next step: ${graph.outcome.nextStep}`,
+      `Constraint: ${constraint}`,
+      `Next step: ${nextStep}`,
       "",
       "Requirements:",
       ...services.map(([name, reason]) => `- ${name}: ${reason}`),
@@ -75,7 +78,7 @@ export default function PilotSpecPage() {
             {briefCopied ? <Check /> : <Clipboard />}{briefCopied ? "Setup brief copied" : "Copy setup brief"}
           </Button>
           <Link href="/telemetry" className={cn(buttonVariants({ variant: "outline" }), "border-black/30 bg-[#f4f4f1] hover:bg-black/[.06]")}>
-            View program telemetry <ArrowRight />
+            {viewer.actor === "cpm" ? "View program telemetry" : "View telemetry"} <ArrowRight />
           </Link>
           <p className="text-sm text-black/55">
             The brief goes to {graph.session.customerName}&apos;s build team; they stand the environment up after security review.
@@ -88,10 +91,10 @@ export default function PilotSpecPage() {
           <h2 className="text-lg font-semibold">Inherited from the session</h2>
           <dl className="mt-4 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 sm:grid-cols-2">
             {[
-              ["Use case", graph.outcome.useCase],
+              ["Use case", useCase],
               ["Owner", owner],
-              ["Constraint", `${compliance?.text ?? graph.outcome.constraint} (${constraintAttribution})`],
-              ["Next step", graph.outcome.nextStep],
+              ["Constraint", constraint === "Not captured" ? constraint : `${constraint} (${constraintAttribution})`],
+              ["Next step", nextStep],
               ...(graph.session.reusePriorPilotSpec == null
                 ? []
                 : [[

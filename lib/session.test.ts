@@ -11,14 +11,17 @@ import {
   applyFundingRoute,
   applyMechanic,
   artifactActions,
+  artifactHeadline,
   artifactLimitsCopy,
   artifactPilotScopeCopy,
   canFlagReferenceStory,
+  canViewPartnerScope,
   claimsArtifactCopy,
   claimsPayoffCopy,
   coldRoleMatch,
   coldScopeDefaults,
   fundingAskCopy,
+  hydrateSessionGraph,
   inputsConfirmedByCopy,
   missingColdRoles,
   isQualified,
@@ -288,11 +291,58 @@ describe("cold scope", () => {
     );
     expect(next.attendees.some((person) => person.name === "Karen Whitfield")).toBe(false);
     expect(next.captures).toEqual([]);
-    expect(next.valueInputs.every((input) => input.confirmedBy === null)).toBe(true);
-    expect(next.costComponents.every((component) => component.confirmedBy === null)).toBe(true);
+    expect(next.valueInputs.every((input) => input.quantity === null && input.confirmedBy === null)).toBe(true);
+    expect(next.costComponents.every((component) =>
+      component.confirmedBy === null && component.inputs.every((input) => input.quantity === null),
+    )).toBe(true);
+    expect(next.outcome.useCase).toBe("");
+    expect(next.outcome.annualValue).toBe(0);
+    expect(next.outcome.constraint).toBe("");
+    expect(next.outcome.nextStep).toBe("");
     expect(next.outcome.owner).toBe("Alex Kim");
+    expect(next.agenda[0].state).toBe("active");
+    expect(next.agenda.slice(1).every((step) => step.state === "upcoming")).toBe(true);
+    expect(agendaForSession(next).map((step) => step.prompt).join(" ")).not.toMatch(/Karen|Dana|Heartland/i);
+    expect(claimsArtifactCopy(next)).toEqual({
+      headline: "Value inputs not captured yet",
+      detail: expect.stringMatching(/add claims volume/i),
+      status: null,
+    });
+    expect(artifactHeadline(next.outcome.useCase)).toBe("Business case awaiting session evidence");
+    expect(artifactPilotScopeCopy(next, brands.cdw)).toBe("Not yet defined");
     expect(fundingAskCopy(next)).not.toMatch(/Dana Reyes|Karen Whitfield|Alex Chen/);
     expect(applyDeliveryMode(next, "facilitated").valueInputs.every((input) => input.confirmedBy === null)).toBe(true);
+  });
+
+  it("preserves intentionally empty cold evidence during hydration", () => {
+    const cold = applyColdScope(initialSessionGraph, company, attendees);
+    const persisted = {
+      ...cold,
+      captures: [],
+    };
+
+    expect(hydrateSessionGraph(persisted).captures).toEqual([]);
+    expect(hydrateSessionGraph(persisted).valueInputs.every((input) => input.quantity === null)).toBe(true);
+  });
+
+  it("scrubs legacy persisted cold data but preserves newly entered cold values", () => {
+    const legacyCold = {
+      ...initialSessionGraph,
+      session: { ...initialSessionGraph.session, scopeMode: "cold" as const },
+      coldCompany: company,
+      coldAttendees: attendees,
+    };
+    const scrubbed = hydrateSessionGraph(legacyCold);
+    expect(scrubbed.captures).toEqual([]);
+    expect(scrubbed.valueInputs.every((input) => input.quantity === null)).toBe(true);
+
+    const editedCold = {
+      ...applyColdScope(initialSessionGraph, company, attendees),
+      valueInputs: applyColdScope(initialSessionGraph, company, attendees).valueInputs.map((input) =>
+        input.id === "claims" ? { ...input, quantity: 275 } : input,
+      ),
+    };
+    expect(hydrateSessionGraph(editedCold).valueInputs.find((input) => input.id === "claims")?.quantity).toBe(275);
   });
 
   it("uses the pattern to explain attendees and name missing roles", () => {
@@ -338,12 +388,20 @@ describe("cold scope", () => {
     const cold = applyColdScope(initialSessionGraph, company, attendees);
 
     expect(restoreSeededGraph(editedSeeded)).toEqual(editedSeeded);
+    expect(restoreSeededGraph(editedSeeded).captures).toEqual(editedSeeded.captures);
+    expect(restoreSeededGraph(editedSeeded).valueInputs).toEqual(editedSeeded.valueInputs);
     expect(restoreSeededGraph(cold)).toEqual(initialSessionGraph);
     expect(restoreSeededGraph(null)).toEqual(initialSessionGraph);
   });
 });
 
 describe("artifact consequences", () => {
+  it("keeps the AI acronym capitalised in the CFO-facing headline", () => {
+    expect(artifactHeadline("AI-assisted claims intake extraction")).toBe(
+      "A grounded case for AI-assisted claims intake extraction",
+    );
+  });
+
   it("does not assert the $7.75M point estimate when volume is a range", () => {
     const next = applyClaimsVolumeChoice(initialSessionGraph, "range-250-500");
     const copy = claimsArtifactCopy(next);
@@ -413,5 +471,13 @@ describe("artifact consequences", () => {
     expect(karen?.reason).toBe("not attending — Dana carries the ask");
     expect(fundingAskCopy(next)).toContain("Dana Reyes");
     expect(fundingAskCopy(next)).not.toContain("Karen Whitfield, CFO:");
+  });
+});
+
+describe("scope access", () => {
+  it("reserves partner-held scope details and controls for the partner", () => {
+    expect(canViewPartnerScope("partner")).toBe(true);
+    expect(canViewPartnerScope("pdm")).toBe(false);
+    expect(canViewPartnerScope("cpm")).toBe(false);
   });
 });
