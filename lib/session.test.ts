@@ -13,6 +13,7 @@ import {
   artifactActions,
   artifactLimitsCopy,
   artifactPilotScopeCopy,
+  canFlagReferenceStory,
   claimsArtifactCopy,
   claimsPayoffCopy,
   coldRoleMatch,
@@ -374,7 +375,18 @@ describe("artifact consequences", () => {
     expect(artifactActions("partner", false, "facilitated").tertiary).toBe(
       "Contact my partner manager with this business case",
     );
-    expect(artifactActions("pdm", false, "facilitated").tertiary).toBeNull();
+    expect(artifactActions("pdm", false, "facilitated")).toEqual({
+      primary: "Review funding request",
+      secondary: null,
+      tertiary: null,
+    });
+    expect(artifactActions("cpm", false, "facilitated").secondary).toBeNull();
+  });
+
+  it("offers reference-story review to vendor actors on the pilot spec", () => {
+    expect(canFlagReferenceStory("partner")).toBe(false);
+    expect(canFlagReferenceStory("pdm")).toBe(true);
+    expect(canFlagReferenceStory("cpm")).toBe(true);
   });
 
   it("leads a self-service artifact with facilitated verification", () => {

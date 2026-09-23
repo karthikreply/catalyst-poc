@@ -36,7 +36,7 @@ export default function Home() {
       <section className="md-card-outlined mt-4 flex flex-wrap items-center gap-4 p-5 opacity-60">
         <div className="grid size-11 place-items-center rounded-[var(--md-sys-shape-large)] bg-[var(--md-sys-color-surface-container)]"><Presentation className="size-5" /></div>
         <div className="min-w-64 flex-1">
-          <h2 className="md-title-medium">Campaign self-service entry</h2>
+          <h2 className="md-title-medium">I&apos;m a customer coming in from a campaign</h2>
           <p className="md-body-medium text-[var(--md-sys-color-on-surface-variant)]">Unauthenticated campaign entry needs a different question set and is outside this demo.</p>
         </div>
         <span className="md-chip">Illustrative · unavailable</span>

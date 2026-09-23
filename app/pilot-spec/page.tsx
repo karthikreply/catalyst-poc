@@ -6,7 +6,9 @@ import { ArrowRight, Check, ChevronDown, Clipboard } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
+import { UnavailableControl } from "@/components/unavailable-control";
 import { patterns } from "@/lib/seed";
+import { canFlagReferenceStory } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 const enableList = `# Enable list — customer cloud account
@@ -28,7 +30,7 @@ const services = [
 ];
 
 export default function PilotSpecPage() {
-  const { graph } = useSession();
+  const { graph, brand, viewer } = useSession();
   const [copied, setCopied] = useState(false);
   const [briefCopied, setBriefCopied] = useState(false);
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
@@ -104,6 +106,22 @@ export default function PilotSpecPage() {
           </dl>
           <p className="mt-4 text-sm text-amber-800">Readiness: data owner identified. Security review needed — allow 5 days.</p>
         </section>
+
+        {canFlagReferenceStory(viewer.actor) && (
+          <section className="rounded-sm border border-black/10 bg-white p-6">
+            <h2 className="text-lg font-semibold">Reference story</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-black/58">
+              Pushes attributed session evidence to {brand.partnerName}&apos;s PRM so its marketing team can turn the business case into a case study.
+            </p>
+            <div className="mt-4">
+              <UnavailableControl
+                label="Flag as reference story"
+                owner={brand.partnerName}
+                explanation="Would send the attributed business-case evidence to the partner PRM for marketing review."
+              />
+            </div>
+          </section>
+        )}
 
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">Reusable pilot setup</h2>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTelemetrySessions,
+  canViewOpportunityDetail,
   recentTelemetryRows,
   scopeTelemetry,
   summarizeTelemetry,
@@ -48,6 +49,13 @@ describe("telemetryBenchmarks", () => {
     expect(scopeTelemetry(rows, { actor: "cpm", partnerName: "SoftwareOne" }).map((item) => item.partner)).toEqual(
       expect.arrayContaining(["CDW", "SoftwareOne", "Insight", "SHI"]),
     );
+  });
+
+  it("shows per-opportunity values only in opted-in partner detail", () => {
+    expect(canViewOpportunityDetail("partner", true)).toBe(true);
+    expect(canViewOpportunityDetail("partner", false)).toBe(false);
+    expect(canViewOpportunityDetail("pdm", true)).toBe(false);
+    expect(canViewOpportunityDetail("cpm", true)).toBe(false);
   });
 
   it("gives the CDW cohort credible scope and funding drop-off", () => {

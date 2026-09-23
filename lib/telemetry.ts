@@ -23,6 +23,10 @@ export type TelemetrySession = {
   daysToFunded: number | null;
 };
 
+export function canViewOpportunityDetail(actor: Actor, detail: boolean) {
+  return actor === "partner" && detail;
+}
+
 export const telemetryBenchmarks = {
   facilitatedSessions: 150,
   selfServiceSessions: 100,

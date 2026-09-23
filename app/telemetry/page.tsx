@@ -7,6 +7,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/components/session-provider";
 import {
+  canViewOpportunityDetail,
   recentTelemetryRows,
   scopeTelemetry,
   summarizeTelemetry,
@@ -53,6 +54,7 @@ function Breakdown({ title, rows, details }: { title: string; rows: [string, num
 export default function TelemetryPage() {
   const { graph, brand, viewer } = useSession();
   const [detail, setDetail] = useState(false);
+  const showOpportunity = canViewOpportunityDetail(viewer.actor, detail);
 
   const rows = useMemo(() => {
     const scoped = scopeTelemetry([...telemetrySeed], {
@@ -193,7 +195,7 @@ export default function TelemetryPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="md-body-medium w-full min-w-[980px] text-left">
-            <thead className="md-label-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Delivery</th><th className="px-5 py-3 font-medium">Mechanic</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th><th className="px-5 py-3 font-medium">Opportunity</th><th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
+            <thead className="md-label-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]"><tr>{detail && <th className="px-5 py-3 font-medium">Customer</th>}<th className="px-5 py-3 font-medium">Partner</th><th className="px-5 py-3 font-medium">Industry segment</th><th className="px-5 py-3 font-medium">Pattern</th><th className="px-5 py-3 font-medium">Delivery</th><th className="px-5 py-3 font-medium">Mechanic</th><th className="px-5 py-3 font-medium">Qualification</th><th className="px-5 py-3 font-medium">Outcome</th>{showOpportunity && <th className="px-5 py-3 font-medium">Opportunity</th>}<th className="px-5 py-3 font-medium">Quarter</th></tr></thead>
             <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
               {recent.map((row) => (
                 <tr key={row.id} className={row.id === graph.session.id ? "bg-[var(--md-sys-color-primary-container)]" : "hover:bg-[color-mix(in_srgb,var(--md-sys-color-primary)_5%,transparent)]"}>
@@ -205,7 +207,7 @@ export default function TelemetryPage() {
                   <td className="px-5 py-4">{row.mechanic === "ghost-ledger" ? "Ghost ledger" : "Value sprint"}</td>
                   <td className="px-5 py-4">{row.delivery === "facilitated" ? "—" : row.qualified ? "Qualified" : "Not qualified"}</td>
                   <td className="px-5 py-4"><OutcomeStatus outcome={row.outcome} /></td>
-                  <td className="px-5 py-4 font-medium">{row.opportunityValue ? formatCompactCurrency(row.opportunityValue) : "—"}</td>
+                  {showOpportunity && <td className="px-5 py-4 font-medium">{row.opportunityValue ? formatCompactCurrency(row.opportunityValue) : "—"}</td>}
                   <td className="px-5 py-4 text-[var(--md-sys-color-on-surface-variant)]">{row.quarter}</td>
                 </tr>
               ))}

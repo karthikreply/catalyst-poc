@@ -293,6 +293,10 @@ export function artifactPilotScopeCopy(graph: SessionGraph, brand: Brand) {
   return `${base}; reuses ${brand.partnerName}'s prior document-pattern pilot spec`;
 }
 
+export function canFlagReferenceStory(actor: Actor) {
+  return actor !== "partner";
+}
+
 export function artifactActions(actor: Actor, qualified: boolean, delivery: Delivery) {
   if (actor === "partner") {
     if (delivery === "self-service") {
@@ -310,7 +314,7 @@ export function artifactActions(actor: Actor, qualified: boolean, delivery: Deli
   }
   return {
     primary: "Review funding request",
-    secondary: "Flag as reference story",
+    secondary: null,
     tertiary: null,
   };
 }

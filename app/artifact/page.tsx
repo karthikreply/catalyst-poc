@@ -124,11 +124,13 @@ export default function ArtifactPage() {
           ) : (
             <>
               <Link href="/funding" className={buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" })}>{actions.primary}</Link>
-              <UnavailableControl
-                label={actions.secondary}
-                owner={brand.partnerName}
-                explanation={qualified ? "A qualified self-service case can request a facilitated follow-up; this demo does not book it." : "Scheduling the next operational step lives with the partner, not this screen."}
-              />
+              {actions.secondary && (
+                <UnavailableControl
+                  label={actions.secondary}
+                  owner={brand.partnerName}
+                  explanation={qualified ? "A qualified self-service case can request a facilitated follow-up; this demo does not book it." : "Scheduling the next operational step lives with the partner, not this screen."}
+                />
+              )}
             </>
           )}
           {actions.tertiary && (
